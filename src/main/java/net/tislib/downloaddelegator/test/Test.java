@@ -27,7 +27,7 @@ public class Test {
             if (i % 2 == 0) {
                 urls.add(PageUrl.builder()
                         .id(UUID.randomUUID())
-                        .url(new URL("http://localhost"))
+                        .url(new URL("https://www.allmovie.com/artist/nicolas-cage-p10155"))
                         .method("GET")
                         .header(Header.builder()
                                 .name("user-agent")
