@@ -1,8 +1,8 @@
 package net.tislib.downloaddelegator.controller;
 
 import lombok.RequiredArgsConstructor;
-import net.tislib.downloaddelegator.data.DownloadRequest;
 import net.tislib.downloaddelegator.service.DownloaderService;
+import net.tislib.downloaddelegator.data.DownloadRequest;
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;

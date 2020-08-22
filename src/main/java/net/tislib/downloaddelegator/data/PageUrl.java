@@ -22,8 +22,6 @@ public class PageUrl {
 
     private byte[] body;
 
-    private int delay;
-
     @Singular
     private List<Header> headers;
 }

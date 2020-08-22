@@ -13,12 +13,6 @@ repositories {
 }
 
 dependencies {
-    compile project(':lib')
-
-// https://mvnrepository.com/artifact/org.springframework.boot/spring-boot-starter-webflux
-//    compile 'org.projectreactor:reactor-spring:1.0.1.RELEASE'
-
-
     implementation 'org.springframework.boot:spring-boot-starter-webflux'
 
     testImplementation('org.springframework.boot:spring-boot-starter-test') {
@@ -36,6 +30,8 @@ dependencies {
 
     // https://mvnrepository.com/artifact/org.apache.commons/commons-compress
     compile group: 'org.apache.commons', name: 'commons-compress', version: '1.20'
+
+    compile 'com.konghq:unirest-java:3.7.04:standalone'
 
     testCompile group: 'junit', name: 'junit', version: '4.12'
 }

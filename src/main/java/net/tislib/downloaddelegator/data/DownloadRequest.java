@@ -8,4 +8,10 @@ import java.util.List;
 public class DownloadRequest {
 
     private List<PageUrl> urls;
+
+    private int delay;
+
+    private int timeout;
+
+
 }
