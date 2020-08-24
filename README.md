@@ -5,6 +5,8 @@
 
 This application helps to download multiple files and stream the result in tar.gz format, this application may used for delegating download, achieving multi proxy, delegating network traffic, etc.
 
+This applications collects urls and downloading them in parallel with reactive streams, this means that, any number of requests will not load cpu much and will be faster compared to multithreaded approach.
+
 **Setup**
     
     docker run -d -p 8123:8123 docker.io/tisserv/download-delegator:latest
