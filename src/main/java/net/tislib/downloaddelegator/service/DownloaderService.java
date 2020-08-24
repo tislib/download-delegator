@@ -100,9 +100,11 @@ public class DownloaderService {
                 .tcpConfiguration(tcpClient -> proxyConfig(pageUrl, tcpClient))
                 .responseTimeout(Duration.ofMillis(requestTimeout))
                 .headers(item -> {
-                    pageUrl.getHeaders().forEach(h -> {
-                        item.add(h.getName(), h.getValue());
-                    });
+                    if (pageUrl.getHeaders() != null) {
+                        pageUrl.getHeaders().forEach(h -> {
+                            item.add(h.getName(), h.getValue());
+                        });
+                    }
                 })
                 .get()
                 .responseSingle((httpClientResponse, byteBufMono) -> byteBufMono.map(buf -> mapResponse(pageUrl, httpClientResponse, buf))
