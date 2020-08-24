@@ -11,7 +11,7 @@ This application helps to download multiple files and stream the result in tar.g
 
 **Usage**
 
-    curl -X POST http://localhost:8124 --data '{"urls": [{"id": "bb91c1ee-d03c-4281-b3af-adee589b939d", "url": "https://www.imdb.com/name/nm1869101/?ref_=fn_al_nm_1"}]}' --header 'Content-type: application/json' > result.tar.gz
+    curl -X POST http://localhost:8123 --data '{"urls": [{"id": "bb91c1ee-d03c-4281-b3af-adee589b939d", "url": "https://www.imdb.com/name/nm1869101/?ref_=fn_al_nm_1"}]}' --header 'Content-type: application/json' > result.tar.gz
     tar -zxf result.tar.gz
     cat bb91c1ee-d03c-4281-b3af-adee589b939d
     cat bb91c1ee-d03c-4281-b3af-adee589b939d.info
