@@ -10,7 +10,9 @@ import net.tislib.downloaddelegator.data.PageUrl;
 import net.tislib.downloaddelegator.util.OutputStreamPublisher;
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveOutputStream;
+import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
 import org.apache.commons.compress.compressors.gzip.GzipCompressorOutputStream;
+import org.apache.commons.compress.utils.IOUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.stereotype.Service;
@@ -21,6 +23,8 @@ import reactor.netty.http.client.HttpClientResponse;
 import reactor.netty.tcp.ProxyProvider;
 import reactor.netty.tcp.TcpClient;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -68,12 +72,25 @@ public class DownloaderService {
     private void mapResponseToTar(OutputStreamPublisher<TarArchiveOutputStream> outputStreamPublisher, PageResponse item) {
         if (item.getId() != null) {
             TarArchiveEntry entry = new TarArchiveEntry(String.valueOf(item.getId()));
-            String head = item.getHttpStatus() + "\n";
-            entry.setSize(head.getBytes().length + item.getContent().length);
+            entry.setSize(item.getContent().length);
 
             outputStreamPublisher.getStream().putArchiveEntry(entry);
-            outputStreamPublisher.getStream().write(head.getBytes());
             outputStreamPublisher.getStream().write(item.getContent());
+            outputStreamPublisher.getStream().closeArchiveEntry();
+
+            TarArchiveEntry infoEntry = new TarArchiveEntry(item.getId() + ".info");
+            StringBuilder header = new StringBuilder();
+
+            header.append(item.getHttpStatus()).append("\n");
+
+            item.getHeaders().forEach((val) -> header.append(val.getKey()).append(": ").append(val.getValue()));
+
+            String headerData = header.toString();
+
+            infoEntry.setSize(headerData.getBytes().length);
+
+            outputStreamPublisher.getStream().putArchiveEntry(infoEntry);
+            outputStreamPublisher.getStream().write(headerData.getBytes());
             outputStreamPublisher.getStream().closeArchiveEntry();
         }
     }
@@ -82,6 +99,11 @@ public class DownloaderService {
         return HttpClient.create().baseUrl(pageUrl.getUrl().toString())
                 .tcpConfiguration(tcpClient -> proxyConfig(pageUrl, tcpClient))
                 .responseTimeout(Duration.ofMillis(requestTimeout))
+                .headers(item -> {
+                    pageUrl.getHeaders().forEach(h -> {
+                        item.add(h.getName(), h.getValue());
+                    });
+                })
                 .get()
                 .responseSingle((httpClientResponse, byteBufMono) -> byteBufMono.log()
                         .map(buf -> mapResponse(pageUrl, httpClientResponse, buf))
@@ -99,13 +121,33 @@ public class DownloaderService {
         byte[] bytes = new byte[buf.readableBytes()];
         int readerIndex = buf.readerIndex();
         buf.getBytes(readerIndex, bytes);
+        buf.release();
 
-        pageResponse.setContent(bytes);
+        String contentEncoding = httpClientResponse.responseHeaders().get("content-encoding");
+
+        if (contentEncoding != null && contentEncoding.contains("gzip")) {
+            pageResponse.setContent(gzipDecompress(bytes));
+        } else {
+            pageResponse.setContent(bytes);
+        }
+
+        pageResponse.setHeaders(httpClientResponse.responseHeaders().entries());
+
         pageResponse.setId(pageUrl.getId());
 
         timeCalc.printSpeedStep();
 
         return pageResponse;
+    }
+
+    @SneakyThrows
+    private byte[] gzipDecompress(byte[] compressed) {
+        try (GzipCompressorInputStream gzipCompressorInputStream = new GzipCompressorInputStream(new ByteArrayInputStream(compressed))) {
+            ByteArrayOutputStream boas = new ByteArrayOutputStream();
+            IOUtils.copy(gzipCompressorInputStream, boas);
+
+            return boas.toByteArray();
+        }
     }
 
     private TcpClient proxyConfig(final PageUrl pageUrl, final TcpClient tcpClient) {
