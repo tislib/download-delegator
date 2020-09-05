@@ -56,7 +56,7 @@ public class DownloaderService {
             downloadRequest.setDelay(delay);
         }
         if (downloadRequest.getTimeout() < 1) {
-            downloadRequest.setTimeout(1);
+            downloadRequest.setTimeout(requestTimeout);
         }
 
         List<PageUrl> urls = new ArrayList<>(downloadRequest.getUrls());
@@ -96,9 +96,12 @@ public class DownloaderService {
     }
 
     private Mono<PageResponse> download(PageUrl pageUrl) {
+        int requestTimeoutLocal = requestTimeout;
+
         return HttpClient.create().baseUrl(pageUrl.getUrl().toString())
                 .tcpConfiguration(tcpClient -> proxyConfig(pageUrl, tcpClient))
-                .responseTimeout(Duration.ofMillis(requestTimeout))
+                .followRedirect(true)
+                .responseTimeout(Duration.ofMillis(requestTimeoutLocal))
                 .headers(item -> {
                     if (pageUrl.getHeaders() != null) {
                         pageUrl.getHeaders().forEach(h -> {

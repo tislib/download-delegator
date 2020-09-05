@@ -20,6 +20,8 @@ public class PageUrl {
 
     private Proxy proxy;
 
+    private int timeout;
+
     private byte[] body;
 
     @Singular
