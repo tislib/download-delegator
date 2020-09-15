@@ -3,6 +3,7 @@ package net.tislib.downloaddelegator.service;
 import io.netty.buffer.ByteBuf;
 import lombok.SneakyThrows;
 import lombok.extern.log4j.Log4j2;
+import lombok.val;
 import net.tislib.downloaddelegator.base.TimeCalc;
 import net.tislib.downloaddelegator.data.DownloadRequest;
 import net.tislib.downloaddelegator.data.PageResponse;
@@ -20,12 +21,14 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.netty.http.client.HttpClient;
 import reactor.netty.http.client.HttpClientResponse;
+import reactor.netty.resources.ConnectionProvider;
 import reactor.netty.tcp.ProxyProvider;
 import reactor.netty.tcp.TcpClient;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -98,8 +101,12 @@ public class DownloaderService {
     private Mono<PageResponse> download(PageUrl pageUrl) {
         int requestTimeoutLocal = requestTimeout;
 
-        return HttpClient.create().baseUrl(pageUrl.getUrl().toString())
-                .tcpConfiguration(tcpClient -> proxyConfig(pageUrl, tcpClient))
+        val provider = ConnectionProvider.newConnection();
+        TcpClient tcpClient = TcpClient.create(provider);
+
+        tcpClient = tcpConfig(pageUrl, tcpClient);
+
+        return HttpClient.from(tcpClient).baseUrl(pageUrl.getUrl().toString())
                 .followRedirect(true)
                 .responseTimeout(Duration.ofMillis(requestTimeoutLocal))
                 .headers(item -> {
@@ -154,12 +161,16 @@ public class DownloaderService {
         }
     }
 
-    private TcpClient proxyConfig(final PageUrl pageUrl, final TcpClient tcpClient) {
-        if (pageUrl.getProxy() == null) {
-            return tcpClient;
+    private TcpClient tcpConfig(final PageUrl pageUrl, TcpClient tcpClient) {
+        if (pageUrl.getBind() != null) {
+            tcpClient = tcpClient.bindAddress(() -> new InetSocketAddress(pageUrl.getBind(), (int) (30000 + Math.random() * 30000)));
         }
 
-        return tcpClient.proxy(ops -> buildProxy(pageUrl, ops));
+        if (pageUrl.getProxy() != null) {
+            return tcpClient.proxy(ops -> buildProxy(pageUrl, ops));
+        }
+
+        return tcpClient;
     }
 
     private ProxyProvider.Builder buildProxy(PageUrl pageUrl, final ProxyProvider.TypeSpec ops) {

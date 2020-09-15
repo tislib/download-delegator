@@ -23,30 +23,12 @@ public class Test {
         DownloadRequest downloadRequest = new DownloadRequest();
         List<PageUrl> urls = new ArrayList<>();
 
-        for (int i = 0; i < 100; i++) {
-            if (i % 2 == 0) {
-                urls.add(PageUrl.builder()
-                        .id(UUID.randomUUID())
-                        .url(new URL("https://www.allmovie.com/artist/nicolas-cage-p10155"))
-                        .method("GET")
-                        .header(Header.builder()
-                                .name("user-agent")
-                                .value("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/78.0.3945.88 Safari/537.36")
-                                .build())
-                        .build());
-            } else {
-//                urls.add(PageUrl.builder()
-//                        .id(UUID.randomUUID())
-//                        .url(new URL("https://www.allmovie.com/artist/nicolas-cage-p10155"))
-//                        .method("GET")
-//                        .delay(100)
-//                        .header(Header.builder()
-//                                .name("user-agent")
-//                                .value("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/78.0.3945.88 Safari/537.36")
-//                                .build())
-//                        .build());
-            }
-        }
+        urls.add(PageUrl.builder()
+                .id(UUID.randomUUID())
+                .url(new URL("http://tisserv.net"))
+                .method("GET")
+                .bind("172.20.11.45")
+                .build());
 
         downloadRequest.setUrls(urls);
         downloadRequest.setDelay(1000);
@@ -56,7 +38,7 @@ public class Test {
 
         System.out.println(body);
 
-        byte[] data = Unirest.post("http://127.0.0.1:8080")
+        byte[] data = Unirest.post("http://127.0.0.1:8123")
                 .body(body)
                 .header("Content-type", "application/json")
                 .asBytes()
