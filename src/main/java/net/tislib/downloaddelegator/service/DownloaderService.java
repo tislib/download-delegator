@@ -83,7 +83,7 @@ public class DownloaderService {
 
             header.append(item.getHttpStatus()).append("\n");
 
-            item.getHeaders().forEach((val) -> header.append(val.getKey()).append(": ").append(val.getValue()));
+            item.getHeaders().forEach((val) -> header.append(val.getKey()).append(": ").append(val.getValue()).append("\n"));
 
             String headerData = header.toString();
 
