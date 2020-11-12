@@ -21,6 +21,7 @@ import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.netty.http.client.HttpClient;
+import reactor.netty.http.client.HttpClientRequest;
 import reactor.netty.http.client.HttpClientResponse;
 import reactor.netty.resources.ConnectionProvider;
 import reactor.netty.tcp.ProxyProvider;
@@ -33,6 +34,7 @@ import java.net.InetSocketAddress;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.BiConsumer;
 
 @Service
 @Log4j2
@@ -112,6 +114,11 @@ public class DownloaderService {
         return HttpClient.from(tcpClient)
                 .baseUrl(pageUrl.getUrl().toString())
                 .followRedirect(true)
+                .doOnError((request, throwable) -> {
+                    log.error(String.format("page download failed ID: %s URL: %s message: %s", pageUrl.getId(), pageUrl.getUrl(), throwable.getMessage()));
+                }, (response, throwable) -> {
+                    log.error(String.format("page download failed ID: %s URL: %s message: %s", pageUrl.getId(), pageUrl.getUrl(), throwable.getMessage()));
+                })
                 .responseTimeout(Duration.ofMillis(requestTimeoutLocal))
                 .headers(item -> {
                     if (pageUrl.getHeaders() != null) {
