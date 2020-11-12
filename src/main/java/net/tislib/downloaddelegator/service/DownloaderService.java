@@ -124,7 +124,7 @@ public class DownloaderService {
                 .get()
                 .responseSingle((httpClientResponse, byteBufMono) -> byteBufMono.map(buf -> mapResponse(pageUrl, httpClientResponse, buf))
                 ).onErrorResume(error -> {
-                    log.error(String.format("page download failed ID: %s URL: %s", pageUrl.getId(), pageUrl.getUrl()), error);
+                    log.error(String.format("page download failed ID: %s URL: %s message: %s", pageUrl.getId(), pageUrl.getUrl(), error.getMessage()));
                     return Mono.just(new PageResponse());
                 });
     }
