@@ -1,6 +1,7 @@
 package net.tislib.downloaddelegator.service;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.channel.ChannelOption;
 import lombok.SneakyThrows;
 import lombok.extern.log4j.Log4j2;
 import lombok.val;
@@ -105,9 +106,13 @@ public class DownloaderService {
         TcpClient tcpClient = TcpClient.create(provider);
 
         tcpClient = tcpConfig(pageUrl, tcpClient);
+        tcpClient = tcpClient.option(ChannelOption.SO_TIMEOUT, 50000);
+        tcpClient = tcpClient.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 50000);
 
-        return HttpClient.from(tcpClient).baseUrl(pageUrl.getUrl().toString())
+        return HttpClient.from(tcpClient)
+                .baseUrl(pageUrl.getUrl().toString())
                 .followRedirect(true)
+
                 .responseTimeout(Duration.ofMillis(requestTimeoutLocal))
                 .headers(item -> {
                     if (pageUrl.getHeaders() != null) {
@@ -174,9 +179,13 @@ public class DownloaderService {
     }
 
     private ProxyProvider.Builder buildProxy(PageUrl pageUrl, final ProxyProvider.TypeSpec ops) {
-        ProxyProvider.Builder config1 = ops.type(ProxyProvider.Proxy.HTTP).host(pageUrl.getProxy().getHost()).port(pageUrl.getProxy().getPort());
+        ProxyProvider.Builder config1 = ops.type(ProxyProvider.Proxy.HTTP)
+                .host(pageUrl.getProxy().getHost())
+                .port(pageUrl.getProxy().getPort());
+
         if (pageUrl.getProxy().getUsername() != null) {
-            return config1.username(pageUrl.getProxy().getUsername()).password(u -> pageUrl.getProxy().getPassword());
+            return config1.username(pageUrl.getProxy().getUsername())
+                    .password(u -> pageUrl.getProxy().getPassword());
         } else {
             return config1;
         }
