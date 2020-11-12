@@ -107,7 +107,7 @@ public class DownloaderService {
 
         tcpClient = tcpConfig(pageUrl, tcpClient);
 //        tcpClient = tcpClient.option(ChannelOption.SO_TIMEOUT, 50000);
-        tcpClient = tcpClient.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 50000);
+        tcpClient = tcpClient.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 500000);
 
         return HttpClient.from(tcpClient)
                 .baseUrl(pageUrl.getUrl().toString())
