@@ -106,7 +106,7 @@ public class DownloaderService {
         TcpClient tcpClient = TcpClient.create(provider);
 
         tcpClient = tcpConfig(pageUrl, tcpClient);
-        tcpClient = tcpClient.option(ChannelOption.SO_TIMEOUT, 50000);
+//        tcpClient = tcpClient.option(ChannelOption.SO_TIMEOUT, 50000);
         tcpClient = tcpClient.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 50000);
 
         return HttpClient.from(tcpClient)
