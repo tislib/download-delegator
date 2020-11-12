@@ -112,7 +112,6 @@ public class DownloaderService {
         return HttpClient.from(tcpClient)
                 .baseUrl(pageUrl.getUrl().toString())
                 .followRedirect(true)
-
                 .responseTimeout(Duration.ofMillis(requestTimeoutLocal))
                 .headers(item -> {
                     if (pageUrl.getHeaders() != null) {
