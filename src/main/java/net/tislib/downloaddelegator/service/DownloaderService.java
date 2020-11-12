@@ -183,6 +183,8 @@ public class DownloaderService {
                 .host(pageUrl.getProxy().getHost())
                 .port(pageUrl.getProxy().getPort());
 
+        config1 = config1.connectTimeoutMillis(500000);
+
         if (pageUrl.getProxy().getUsername() != null) {
             return config1.username(pageUrl.getProxy().getUsername())
                     .password(u -> pageUrl.getProxy().getPassword());
