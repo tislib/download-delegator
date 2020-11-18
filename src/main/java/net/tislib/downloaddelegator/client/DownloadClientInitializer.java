@@ -21,7 +21,7 @@ public class DownloadClientInitializer extends ChannelInitializer<SocketChannel>
     @Override
     protected void initChannel(SocketChannel ch) {
         ChannelPipeline p = ch.pipeline();
-        log.debug("connected to: {} {}", ch.localAddress(), ch.remoteAddress());
+//        log.debug("connected to: {} {}", ch.localAddress(), ch.remoteAddress());
 
         p.addLast(new ChannelOutboundHandlerAdapter());
 

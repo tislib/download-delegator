@@ -55,7 +55,11 @@ public class Server {
         running = true;
     }
 
-    public void stop() {
-        channelFuture.channel().closeFuture();
+    public void stop(boolean waitForStop) throws InterruptedException {
+        ChannelFuture future = channelFuture.channel().closeFuture();
+
+        if (waitForStop) {
+            future.sync();
+        }
     }
 }

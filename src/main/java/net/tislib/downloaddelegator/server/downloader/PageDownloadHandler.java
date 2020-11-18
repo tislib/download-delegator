@@ -64,6 +64,7 @@ public class PageDownloadHandler extends SimpleChannelInboundHandler<PageUrl> {
             DefaultLastHttpContent defaultLastHttpContent = new DefaultLastHttpContent();
             ctx.writeAndFlush(defaultLastHttpContent);
             ctx.close();
+            log.trace("last response finish page for: {}", pageUrl.getUrl());
         }
     }
 

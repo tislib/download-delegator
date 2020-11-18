@@ -4,8 +4,9 @@ import lombok.SneakyThrows;
 import net.tislib.downloaddelegator.data.DownloadRequest;
 import net.tislib.downloaddelegator.data.PageUrl;
 import org.junit.Rule;
+import org.junit.rules.ErrorCollector;
+import org.junit.rules.ExpectedException;
 
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -16,7 +17,12 @@ public class BaseIntegrationTest {
     public HttpServer httpServer = new HttpServer();
 
     @Rule
-    public Backend backend = new Backend();
+    public ExpectedException exception = ExpectedException.none();
+
+    @Rule
+    public ErrorCollector collector = new ErrorCollector();
+
+    public static final Backend backend = new Backend();
 
     @SneakyThrows
     protected DownloadRequest prepareDownloadRequest(int count) {

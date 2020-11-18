@@ -11,20 +11,23 @@ import org.junit.rules.ExternalResource;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 
-public class Backend extends ExternalResource {
+public class Backend {
 
     private final Server server = new Server();
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    @Override
-    protected void before() throws Throwable {
+    public Backend() {
         server.run();
     }
 
-    @Override
-    protected void after() {
-        server.stop();
+    @SneakyThrows
+    public void callAsync(DownloadRequest downloadRequest, Consumer<List<PageData>> consumer) {
+        new Thread(() ->
+                consumer.accept(call(downloadRequest)))
+                .start();
     }
 
     @SneakyThrows

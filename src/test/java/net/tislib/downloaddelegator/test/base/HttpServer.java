@@ -33,8 +33,9 @@ public class HttpServer implements TestRule {
     private Scenario scenario;
     private AtomicInteger scenarioIndex = new AtomicInteger();
 
+    @SneakyThrows
     public void start() {
-        serverChannel = this.server(serverWorkgroup);
+        serverChannel = this.server(serverWorkgroup).sync();
     }
 
     public void stop() {
