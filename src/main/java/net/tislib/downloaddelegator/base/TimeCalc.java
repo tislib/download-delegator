@@ -1,4 +1,4 @@
-package net.tislib.downloaddelegator.netty;
+package net.tislib.downloaddelegator.base;
 
 import java.time.Duration;
 import java.time.Instant;
