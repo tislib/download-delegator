@@ -3,6 +3,8 @@ package net.tislib.downloaddelegator.test.base;
 import lombok.SneakyThrows;
 import net.tislib.downloaddelegator.data.DownloadRequest;
 import net.tislib.downloaddelegator.data.PageUrl;
+import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.core.config.Configurator;
 import org.junit.Rule;
 import org.junit.rules.ErrorCollector;
 import org.junit.rules.ExpectedException;
@@ -22,7 +24,12 @@ public class BaseIntegrationTest {
     @Rule
     public ErrorCollector collector = new ErrorCollector();
 
-    public static final Backend backend = new Backend();
+    public static final Backend backend;
+
+    static {
+        backend = new Backend();
+        Configurator.setRootLevel(Level.TRACE);
+    }
 
     @SneakyThrows
     protected DownloadRequest prepareDownloadRequest(int count) {

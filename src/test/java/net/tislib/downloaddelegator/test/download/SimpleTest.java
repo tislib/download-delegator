@@ -24,16 +24,15 @@ public class SimpleTest extends BaseIntegrationTest {
                         .build()
         );
 
-        List<PageData> response = backend.call(prepareDownloadRequest(5));
+        List<PageData> response = backend.call(prepareDownloadRequest(1));
 
-        assertEquals(response.size(), 5);
+        assertEquals(response.size(), 1);
 
         response.forEach(item -> assertEquals(new String(item.getContent()), "hello-world"));
     }
 
     @Test
-    @Ignore
-    public void singleDownloadTest2() throws Exception {
+    public void manyDownloadTest() throws Exception {
         httpServer.scenario(
                 Scenario.builder()
                         .request(Scenario.Request.builder()

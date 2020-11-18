@@ -8,6 +8,9 @@ import net.tislib.downloaddelegator.data.DownloadRequest;
 import net.tislib.downloaddelegator.server.Server;
 import org.junit.rules.ExternalResource;
 
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.net.URLConnection;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -32,15 +35,18 @@ public class Backend {
 
     @SneakyThrows
     public List<PageData> call(DownloadRequest downloadRequest) {
-        String requestBody = objectMapper.writeValueAsString(downloadRequest);
+        URL url = new URL("http://127.0.0.1:8123/download.tar.gz");
 
-        HttpResponse<byte[]> resp = Unirest.post("http://127.0.0.1:8123/download.tar.gz")
-                .body(requestBody)
-                .header("Content-type", "application/json")
-                .header("Accept-Encoding", "gzip")
-                .asBytes();
 
-        String body = new String(resp.getBody());
+        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+
+        conn.setRequestMethod("POST");
+        conn.setDoOutput(true);
+        conn.setDoInput(true);
+
+        objectMapper.writeValue(conn.getOutputStream(), downloadRequest);
+
+        String body = new String(conn.getInputStream().readAllBytes());
 
         List<PageData> response = new ArrayList<>();
 
