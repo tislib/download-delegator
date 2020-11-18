@@ -9,6 +9,7 @@ import net.tislib.downloaddelegator.data.PageUrl;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Log4j2
 public class PageUrlTaskSplitterHandler extends MessageToMessageDecoder<DownloadRequest> {
@@ -20,17 +21,18 @@ public class PageUrlTaskSplitterHandler extends MessageToMessageDecoder<Download
         AtomicPageCounter atomicPageCounter = new AtomicPageCounter();
 
         List<PageUrl> urls = new ArrayList<>(downloadRequest.getUrls());
+
+        AtomicInteger globalDelay = new AtomicInteger();
+
         urls.forEach(item -> {
             atomicPageCounter.markUnDone(item.getId());
             item.setPageCounter(atomicPageCounter);
+
+            globalDelay.addAndGet(downloadRequest.getDelay());
+
+            item.setDelay(item.getDelay() + globalDelay.get());
         });
 
-        urls.forEach(url -> {
-            if (downloadRequest.getDelay() > 0) {
-                out.add(url);
-            } else {
-                out.add(url);
-            }
-        });
+        out.addAll(urls);
     }
 }

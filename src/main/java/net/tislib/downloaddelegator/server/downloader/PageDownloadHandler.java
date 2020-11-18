@@ -11,6 +11,8 @@ import net.tislib.downloaddelegator.client.DownloadClient;
 import net.tislib.downloaddelegator.data.PageResponse;
 import net.tislib.downloaddelegator.data.PageUrl;
 
+import java.util.concurrent.TimeUnit;
+
 @Log4j2
 public class PageDownloadHandler extends SimpleChannelInboundHandler<PageUrl> {
 
@@ -19,6 +21,14 @@ public class PageDownloadHandler extends SimpleChannelInboundHandler<PageUrl> {
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, PageUrl pageUrl) {
         log.trace("downloading page: {}", pageUrl.getUrl());
+        if (pageUrl.getDelay() == 0) {
+            startDownload(ctx, pageUrl);
+        } else {
+            ctx.executor().schedule(() -> startDownload(ctx, pageUrl), pageUrl.getDelay(), TimeUnit.MILLISECONDS);
+        }
+    }
+
+    private void startDownload(ChannelHandlerContext ctx, PageUrl pageUrl) {
         DownloadClient downloadClient = new DownloadClient() {
             @Override
             public void onFullResponse(PageResponse response) {
@@ -41,41 +51,44 @@ public class PageDownloadHandler extends SimpleChannelInboundHandler<PageUrl> {
 
         // send headers if is first page response
         if (pageUrl.getPageCounter().isNoneDone()) {
-            pageUrl.getPageCounter().markDone(pageResponse.getId());
-
-            DefaultHttpResponse defaultHttpResponse = new DefaultHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK);
-
-            ctx.writeAndFlush(defaultHttpResponse);
+            startResponse(ctx);
         }
 
         pageUrl.getPageCounter().markDone(pageResponse.getId());
 
-        ByteBuf head = sendPageMetaHead(pageUrl, ctx);
+        sendPageMetaHead(pageUrl, ctx);
 
         DefaultHttpContent defaultHttpContent = new DefaultHttpContent(pageResponse.getContent());
         ctx.writeAndFlush(defaultHttpContent);
 
         sendPageMetaTail(pageUrl, ctx);
 
-        // write end header
-        ctx.write(new DefaultHttpContent(head));
-
         if (pageUrl.getPageCounter().isAllDone()) {
-            DefaultLastHttpContent defaultLastHttpContent = new DefaultLastHttpContent();
-            ctx.writeAndFlush(defaultLastHttpContent);
-            ctx.close();
-            log.trace("last response finish page for: {}", pageUrl.getUrl());
+            finishResponse(pageUrl, ctx);
         }
     }
 
-    private ByteBuf sendPageMetaHead(PageUrl pageUrl, ChannelHandlerContext ctx) {
+    private void finishResponse(PageUrl pageUrl, ChannelHandlerContext ctx) {
+        DefaultLastHttpContent defaultLastHttpContent = new DefaultLastHttpContent();
+        ctx.writeAndFlush(defaultLastHttpContent);
+        ctx.close();
+
+        log.trace("last response finish page for: {}", pageUrl.getUrl());
+    }
+
+    private void startResponse(ChannelHandlerContext ctx) {
+        DefaultHttpResponse defaultHttpResponse = new DefaultHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK);
+
+        ctx.writeAndFlush(defaultHttpResponse);
+    }
+
+    private void sendPageMetaHead(PageUrl pageUrl, ChannelHandlerContext ctx) {
         ByteBuf head = ctx.alloc().buffer();
         head.writeBytes(pageUrl.getId().toString().getBytes());
         head.writeBytes("\n".getBytes());
 
-        // write begin header
+        // write page beginning splitter
         ctx.write(new DefaultHttpContent(head));
-        return head;
     }
 
     private void sendPageMetaTail(PageUrl pageUrl, ChannelHandlerContext ctx) {
@@ -87,6 +100,8 @@ public class PageDownloadHandler extends SimpleChannelInboundHandler<PageUrl> {
         if (!pageUrl.getPageCounter().isAllDone()) {
             tail.writeBytes("\n".getBytes()); // if is not last item, add new line after tail
         }
+
+        // write page ending splitter
         ctx.writeAndFlush(new DefaultHttpContent(tail));
     }
 }

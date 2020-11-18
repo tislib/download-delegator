@@ -25,6 +25,8 @@ public class PageUrl {
 
     private int timeout;
 
+    private int delay;
+
     private byte[] body;
 
     @Singular
