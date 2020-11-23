@@ -36,7 +36,6 @@ public class Backend {
 
     @SneakyThrows
     public List<PageData> call(DownloadRequest downloadRequest) {
-        System.out.println("CALLING BACKEND");
         URL url = new URL("http://127.0.0.1:8123/download.tar.gz");
 
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
@@ -55,10 +54,6 @@ public class Backend {
         PageData currentResponse = null;
 
         for (String line : body.split("\\n")) {
-            System.out.println(line);
-            if (StringUtils.isBlank(line)) {
-                continue;
-            }
             if (currentResponse == null) {
                 UUID id = UUID.fromString(line);
                 currentResponse = new PageData();

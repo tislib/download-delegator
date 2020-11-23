@@ -4,7 +4,11 @@ import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
-import io.netty.handler.codec.http.*;
+import io.netty.handler.codec.http.DefaultHttpContent;
+import io.netty.handler.codec.http.DefaultHttpResponse;
+import io.netty.handler.codec.http.DefaultLastHttpContent;
+import io.netty.handler.codec.http.HttpResponseStatus;
+import io.netty.handler.codec.http.HttpVersion;
 import lombok.extern.log4j.Log4j2;
 import net.tislib.downloaddelegator.base.TimeCalc;
 import net.tislib.downloaddelegator.client.DownloadClient;
@@ -29,8 +33,6 @@ public class PageDownloadHandler extends SimpleChannelInboundHandler<PageUrl> {
             startResponse(ctx);
         }
 
-        System.out.println("downloading: " + pageUrl.getId());
-
         if (pageUrl.getDelay() == 0) {
             startDownload(ctx, pageUrl);
         } else {
@@ -39,17 +41,9 @@ public class PageDownloadHandler extends SimpleChannelInboundHandler<PageUrl> {
     }
 
     @Override
-    public void channelReadComplete(ChannelHandlerContext ctx) throws Exception {
-        super.channelReadComplete(ctx);
-
-        System.out.println("read completed xxxxxxxxxx");
-    }
-
-    @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-        super.exceptionCaught(ctx, cause);
-
-        System.out.println("exceptionCaught xxxxxxxxxx");
+        log.error(cause);
+        ctx.close();
     }
 
     private void startDownload(ChannelHandlerContext ctx, PageUrl pageUrl) {
@@ -65,13 +59,14 @@ public class PageDownloadHandler extends SimpleChannelInboundHandler<PageUrl> {
             }
 
             @Override
-            public void onClose() {
-                super.onClose();
+            public void onClose(boolean isResponded) {
+                super.onClose(isResponded);
 
-                System.out.println("downloaded: " + pageUrl.getId());
-                if (counter.decrementAndGet() == 0) {
-                    finishResponse(pageUrl, ctx);
-                }
+                ctx.executor().execute(() -> {
+                    if (counter.decrementAndGet() == 0) {
+                        finishResponse(pageUrl, ctx);
+                    }
+                });
             }
         };
 

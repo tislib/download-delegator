@@ -97,7 +97,8 @@ public class HttpServer implements TestRule {
 
     private void runRequest(Scenario.Request scenarioItem, ChannelHandlerContext ctx, FullHttpRequest msg) {
         if (scenarioItem.isCloseConnectionWithoutResponse()) {
-            ctx.close();
+            ctx.channel().close();
+            return;
         }
 
         ByteBuf content = ctx.alloc().buffer();
@@ -122,7 +123,7 @@ public class HttpServer implements TestRule {
             lastRequest = request;
             curIndex = curIndex - request.getCount();
 
-            if (curIndex < 0) {
+            if (curIndex <= 0) {
                 break;
             }
         }

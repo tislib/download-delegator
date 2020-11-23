@@ -82,11 +82,6 @@ public abstract class DownloadClient {
         channelFuture.addListener(future -> {
             channelFuture.channel().writeAndFlush(request);
         });
-
-        channelFuture.channel().closeFuture().addListener(future -> {
-           onClose();
-        });
-
     }
 
     public abstract void onFullResponse(PageResponse pageResponse);
@@ -95,7 +90,7 @@ public abstract class DownloadClient {
         log.error("onError", th);
     }
 
-    public void onClose() {
+    public void onClose(boolean isResponded) {
 
     }
 }

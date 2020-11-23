@@ -23,7 +23,7 @@ public class DelayTest extends BaseIntegrationTest {
 
         List<PageData> response = backend.call(prepareDownloadRequest(5));
 
-        assertEquals(response.size(), 1);
+        assertEquals(response.size(), 5);
 
         response.forEach(item -> assertEquals(new String(item.getContent()), "hello-world"));
     }

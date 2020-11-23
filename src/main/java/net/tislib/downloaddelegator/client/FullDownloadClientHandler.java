@@ -28,13 +28,14 @@ public class FullDownloadClientHandler extends SimpleChannelInboundHandler<FullH
     }
 
     @Override
-    public void channelReadComplete(ChannelHandlerContext ctx) throws Exception {
-        super.channelReadComplete(ctx);
-    }
-
-    @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
         ctx.close();
         downloadClient.onError(cause);
+    }
+
+    @Override
+    public void channelUnregistered(ChannelHandlerContext ctx) throws Exception {
+        super.channelUnregistered(ctx);
+        downloadClient.onClose(isResponded);
     }
 }

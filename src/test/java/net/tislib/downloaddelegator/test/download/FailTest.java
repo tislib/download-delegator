@@ -16,12 +16,11 @@ public class FailTest extends BaseIntegrationTest {
 
     @Test
     public void failDownloadTest() throws Exception {
-//        Thread.sleep(100000000);
         httpServer.scenario(
                 Scenario.builder()
                         .request(Scenario.Request.builder()
                                 .closeConnectionWithoutResponse(true)
-                                .count(3)
+                                .count(10)
                                 .build())
                         .request(Scenario.Request.builder()
                                 .responseData("hello-world".getBytes())
@@ -29,7 +28,7 @@ public class FailTest extends BaseIntegrationTest {
                         .build()
         );
 
-        List<PageData> response = backend.call(prepareDownloadRequest(5));
+        List<PageData> response = backend.call(prepareDownloadRequest(100));
 
         assertEquals(response.size(), 90);
 
