@@ -70,6 +70,11 @@ public class HttpServer implements TestRule {
                             protected void channelRead0(ChannelHandlerContext ctx, FullHttpRequest msg) throws Exception {
                                 process(ctx, msg);
                             }
+
+                            @Override
+                            public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+
+                            }
                         });
                     }
                 });
@@ -91,6 +96,10 @@ public class HttpServer implements TestRule {
     }
 
     private void runRequest(Scenario.Request scenarioItem, ChannelHandlerContext ctx, FullHttpRequest msg) {
+        if (scenarioItem.isCloseConnectionWithoutResponse()) {
+            ctx.close();
+        }
+
         ByteBuf content = ctx.alloc().buffer();
         content.writeBytes(scenarioItem.getResponseData());
 

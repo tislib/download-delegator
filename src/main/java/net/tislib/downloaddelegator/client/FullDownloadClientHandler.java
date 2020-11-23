@@ -11,6 +11,7 @@ import net.tislib.downloaddelegator.data.PageResponse;
 @RequiredArgsConstructor
 public class FullDownloadClientHandler extends SimpleChannelInboundHandler<FullHttpResponse> {
     private final DownloadClient downloadClient;
+    private boolean isResponded;
 
     @Override
     public void channelRead0(ChannelHandlerContext ctx, FullHttpResponse fullHttpResponse) {
@@ -23,11 +24,17 @@ public class FullDownloadClientHandler extends SimpleChannelInboundHandler<FullH
         response.setContent(fullHttpResponse.content().copy());
 
         downloadClient.onFullResponse(response);
+        isResponded = true;
+    }
+
+    @Override
+    public void channelReadComplete(ChannelHandlerContext ctx) throws Exception {
+        super.channelReadComplete(ctx);
     }
 
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-        cause.printStackTrace();
         ctx.close();
+        downloadClient.onError(cause);
     }
 }

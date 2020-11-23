@@ -18,16 +18,11 @@ public class PageUrlTaskSplitterHandler extends MessageToMessageDecoder<Download
     protected void decode(ChannelHandlerContext ctx, DownloadRequest downloadRequest, List<Object> out) {
         log.trace("starting download2: {}", downloadRequest);
 
-        AtomicPageCounter atomicPageCounter = new AtomicPageCounter();
-
         List<PageUrl> urls = new ArrayList<>(downloadRequest.getUrls());
 
         AtomicInteger globalDelay = new AtomicInteger();
 
         urls.forEach(item -> {
-            atomicPageCounter.markUnDone(item.getId());
-            item.setPageCounter(atomicPageCounter);
-
             globalDelay.addAndGet(downloadRequest.getDelay());
 
             item.setDelay(item.getDelay() + globalDelay.get());

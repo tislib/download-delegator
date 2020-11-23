@@ -12,15 +12,25 @@ import net.tislib.downloaddelegator.data.PageResponse;
 import net.tislib.downloaddelegator.data.PageUrl;
 
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Log4j2
 public class PageDownloadHandler extends SimpleChannelInboundHandler<PageUrl> {
 
     private final TimeCalc timeCalc = new TimeCalc();
+    private final AtomicInteger counter = new AtomicInteger();
 
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, PageUrl pageUrl) {
         log.trace("downloading page: {}", pageUrl.getUrl());
+
+        // send headers if is first page response
+        if (counter.incrementAndGet() == 1) {
+            startResponse(ctx);
+        }
+
+        System.out.println("downloading: " + pageUrl.getId());
+
         if (pageUrl.getDelay() == 0) {
             startDownload(ctx, pageUrl);
         } else {
@@ -28,11 +38,40 @@ public class PageDownloadHandler extends SimpleChannelInboundHandler<PageUrl> {
         }
     }
 
+    @Override
+    public void channelReadComplete(ChannelHandlerContext ctx) throws Exception {
+        super.channelReadComplete(ctx);
+
+        System.out.println("read completed xxxxxxxxxx");
+    }
+
+    @Override
+    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+        super.exceptionCaught(ctx, cause);
+
+        System.out.println("exceptionCaught xxxxxxxxxx");
+    }
+
     private void startDownload(ChannelHandlerContext ctx, PageUrl pageUrl) {
         DownloadClient downloadClient = new DownloadClient() {
             @Override
             public void onFullResponse(PageResponse response) {
                 ctx.executor().execute(() -> onDownload(pageUrl, ctx, response));
+            }
+
+            @Override
+            public void onError(Throwable th) {
+                super.onError(th);
+            }
+
+            @Override
+            public void onClose() {
+                super.onClose();
+
+                System.out.println("downloaded: " + pageUrl.getId());
+                if (counter.decrementAndGet() == 0) {
+                    finishResponse(pageUrl, ctx);
+                }
             }
         };
 
@@ -45,16 +84,9 @@ public class PageDownloadHandler extends SimpleChannelInboundHandler<PageUrl> {
                             ChannelHandlerContext ctx,
                             PageResponse pageResponse) {
         pageResponse.setId(pageUrl.getId());
-        log.trace("response page for: {}", pageUrl.getUrl());
+        log.trace("response page for: {} {}", pageUrl.getUrl(), pageUrl.getId());
 
         timeCalc.printSpeedStep();
-
-        // send headers if is first page response
-        if (pageUrl.getPageCounter().isNoneDone()) {
-            startResponse(ctx);
-        }
-
-        pageUrl.getPageCounter().markDone(pageResponse.getId());
 
         sendPageMetaHead(pageUrl, ctx);
 
@@ -62,10 +94,6 @@ public class PageDownloadHandler extends SimpleChannelInboundHandler<PageUrl> {
         ctx.writeAndFlush(defaultHttpContent);
 
         sendPageMetaTail(pageUrl, ctx);
-
-        if (pageUrl.getPageCounter().isAllDone()) {
-            finishResponse(pageUrl, ctx);
-        }
     }
 
     private void finishResponse(PageUrl pageUrl, ChannelHandlerContext ctx) {
@@ -97,9 +125,7 @@ public class PageDownloadHandler extends SimpleChannelInboundHandler<PageUrl> {
 
         tail.writeBytes(pageUrl.getId().toString().getBytes());
 
-        if (!pageUrl.getPageCounter().isAllDone()) {
-            tail.writeBytes("\n".getBytes()); // if is not last item, add new line after tail
-        }
+        tail.writeBytes("\n".getBytes()); // if is not last item, add new line after tail
 
         // write page ending splitter
         ctx.writeAndFlush(new DefaultHttpContent(tail));

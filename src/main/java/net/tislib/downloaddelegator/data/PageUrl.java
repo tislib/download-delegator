@@ -32,6 +32,4 @@ public class PageUrl {
     @Singular
     private List<Header> headers;
 
-    @JsonIgnore
-    private AtomicPageCounter pageCounter;
 }

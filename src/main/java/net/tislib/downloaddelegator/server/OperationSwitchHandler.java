@@ -22,7 +22,7 @@ public class OperationSwitchHandler extends MessageToMessageDecoder<FullHttpRequ
         String action = request.method().name() + " " + request.uri();
         String body = request.content().toString(Charset.defaultCharset());
 
-        log.debug("Handling request: {} {}", action, body);
+        log.debug("Handling request: {} {}", action, ctx.channel().remoteAddress());
 
         if (action.startsWith("POST /download.tar.gz")) {
             DownloadRequest downloadRequest = objectMapper.readValue(body, DownloadRequest.class);
