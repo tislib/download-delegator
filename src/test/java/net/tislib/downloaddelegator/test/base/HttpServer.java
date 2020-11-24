@@ -9,6 +9,7 @@ import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.codec.http.*;
 import io.netty.util.ResourceLeakDetector;
 import lombok.SneakyThrows;
+import lombok.extern.log4j.Log4j2;
 import org.junit.rules.TestRule;
 import org.junit.runner.Description;
 import org.junit.runners.model.Statement;
@@ -21,6 +22,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static io.netty.handler.codec.http.HttpResponseStatus.OK;
 import static io.netty.handler.codec.http.HttpVersion.HTTP_1_1;
 
+@Log4j2
 public class HttpServer implements TestRule {
 
     static {
@@ -31,7 +33,7 @@ public class HttpServer implements TestRule {
 
     private ChannelFuture serverChannel;
     private Scenario scenario;
-    private AtomicInteger scenarioIndex = new AtomicInteger();
+    AtomicInteger scenarioIndex = new AtomicInteger();
 
     @SneakyThrows
     public void start() {
@@ -49,31 +51,23 @@ public class HttpServer implements TestRule {
     }
 
     public ChannelFuture server(EventLoopGroup workerGroup) {
+
         ServerBootstrap b = new ServerBootstrap();
         b.group(workerGroup).channel(NioServerSocketChannel.class)
-                //Setting InetSocketAddress to port 0 will assign one at random
                 .localAddress(new InetSocketAddress(0))
                 .childHandler(new ChannelInitializer<SocketChannel>() {
                     @Override
                     protected void initChannel(SocketChannel ch) throws Exception {
-                        //HttpServerCodec is a helper ChildHandler that encompasses
-                        //both HTTP request decoding and HTTP response encoding
                         ch.pipeline().addLast(new HttpServerCodec());
-                        //HttpObjectAggregator helps collect chunked HttpRequest pieces into
-                        //a single FullHttpRequest. If you don't make use of streaming, this is
-                        //much simpler to work with.
-                        ch.pipeline().addLast(new HttpObjectAggregator(1048576));
-                        //Finally add your FullHttpRequest handler. Real examples might replace this
-                        //with a request router
-                        ch.pipeline().addLast(new SimpleChannelInboundHandler<FullHttpRequest>() {
+                        ch.pipeline().addLast(new SimpleChannelInboundHandler<HttpRequest>() {
                             @Override
-                            protected void channelRead0(ChannelHandlerContext ctx, FullHttpRequest msg) throws Exception {
+                            protected void channelRead0(ChannelHandlerContext ctx, HttpRequest msg) throws Exception {
                                 process(ctx, msg);
                             }
 
                             @Override
                             public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-
+                                cause.printStackTrace();
                             }
                         });
                     }
@@ -83,9 +77,12 @@ public class HttpServer implements TestRule {
         return b.bind();
     }
 
-    private void process(ChannelHandlerContext ctx, FullHttpRequest msg) {
-        scenarioIndex.incrementAndGet();
-        Scenario.Request scenarioItem = locateScenarioItem(scenarioIndex.get());
+    private void process(ChannelHandlerContext ctx, HttpRequest msg) {
+        log.debug("http-server: {}", msg.uri());
+
+        Scenario.Request scenarioItem = locateScenarioItem(scenarioIndex.incrementAndGet());
+
+        System.out.println(scenarioItem);
 
         if (scenarioItem.getResponseTime() > 0) {
             ctx.executor().schedule(() ->
@@ -95,8 +92,23 @@ public class HttpServer implements TestRule {
         runRequest(scenarioItem, ctx, msg);
     }
 
-    private void runRequest(Scenario.Request scenarioItem, ChannelHandlerContext ctx, FullHttpRequest msg) {
-        if (scenarioItem.isCloseConnectionWithoutResponse()) {
+    private void runRequest(Scenario.Request scenarioItem, ChannelHandlerContext ctx, HttpRequest msg) {
+        if (scenarioItem.getScenarioKind() == Scenario.ScenarioKind.CLOSE_HTTP) {
+            log.debug("http-server close connection: {}", msg.uri());
+            ctx.channel().close();
+            return;
+        }
+
+        if (scenarioItem.getScenarioKind() == Scenario.ScenarioKind.CLOSE_CONNECTION) {
+            ctx.channel().close();
+            return;
+        }
+
+        if (scenarioItem.getScenarioKind() == Scenario.ScenarioKind.CORRUPT_HTTP) {
+            ByteBuf message = ctx.alloc().buffer();
+            message.writeBytes("corrupted data \n\n\n".getBytes());
+
+            ctx.channel().writeAndFlush(message);
             ctx.channel().close();
             return;
         }
@@ -104,13 +116,16 @@ public class HttpServer implements TestRule {
         ByteBuf content = ctx.alloc().buffer();
         content.writeBytes(scenarioItem.getResponseData());
 
-        DefaultFullHttpResponse response = new DefaultFullHttpResponse(HTTP_1_1,
-                HttpResponseStatus.valueOf(scenarioItem.getStatusCode()),
-                content);
+        ctx.writeAndFlush(new DefaultHttpResponse(HTTP_1_1,
+                HttpResponseStatus.valueOf(scenarioItem.getStatusCode())));
 
-        ctx.writeAndFlush(response);
+        ctx.writeAndFlush(new DefaultHttpContent(content));
+
+        ctx.writeAndFlush(new DefaultLastHttpContent());
 
         ctx.channel().close();
+
+        log.debug("http-server responded: {}", msg.uri());
     }
 
 

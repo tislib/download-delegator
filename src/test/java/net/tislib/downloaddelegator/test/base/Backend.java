@@ -13,6 +13,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.Consumer;
@@ -52,6 +53,10 @@ public class Backend {
 
         StringBuilder content = new StringBuilder();
         PageData currentResponse = null;
+
+        if (body.equals("")) {
+            return Collections.emptyList();
+        }
 
         for (String line : body.split("\\n")) {
             if (currentResponse == null) {

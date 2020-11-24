@@ -11,6 +11,8 @@ import java.util.UUID;
 public class PageResponse {
     private UUID id;
 
+    private PageUrl pageUrl;
+
     private ByteBuf content;
 
     private int httpStatus;

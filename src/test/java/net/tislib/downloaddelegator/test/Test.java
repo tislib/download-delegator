@@ -38,7 +38,7 @@ public class Test {
         }
 
         downloadRequest.setUrls(urls);
-        downloadRequest.setDelay(1000);
+        downloadRequest.setDelay(1);
 
         String body = objectMapper.writeValueAsString(downloadRequest);
 //        objectMapper.writeValue(new File("/home/taleh/temp/ddreq4.json"), downloadRequest);

@@ -1,33 +1,139 @@
 package net.tislib.downloaddelegator.server.downloader;
 
+import io.netty.buffer.ByteBuf;
+import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.handler.codec.MessageToMessageDecoder;
+import io.netty.channel.ChannelPromise;
+import io.netty.handler.codec.http.DefaultHttpContent;
+import io.netty.handler.codec.http.DefaultHttpResponse;
+import io.netty.handler.codec.http.DefaultLastHttpContent;
+import io.netty.handler.codec.http.HttpResponseStatus;
+import io.netty.handler.codec.http.HttpVersion;
 import lombok.extern.log4j.Log4j2;
-import net.tislib.downloaddelegator.data.AtomicPageCounter;
 import net.tislib.downloaddelegator.data.DownloadRequest;
+import net.tislib.downloaddelegator.data.PageResponse;
 import net.tislib.downloaddelegator.data.PageUrl;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @Log4j2
-public class PageUrlTaskSplitterHandler extends MessageToMessageDecoder<DownloadRequest> {
+public class PageUrlTaskSplitterHandler extends ChannelDuplexHandler {
+
+    private final Set<UUID> pageUrlSet = new HashSet<>();
 
     @Override
-    protected void decode(ChannelHandlerContext ctx, DownloadRequest downloadRequest, List<Object> out) {
+    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+        if (msg instanceof DownloadRequest) {
+            startResponse(ctx);
+            processRequest(ctx, (DownloadRequest) msg);
+        } else {
+            super.channelRead(ctx, msg);
+        }
+
+        ctx.executor().schedule(() -> {
+            if (ctx.channel().isOpen()) {
+                System.out.println(pageUrlSet);
+                ctx.channel().close();
+            }
+        }, 10000, TimeUnit.MILLISECONDS);
+    }
+
+    @Override
+    public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
+        if (msg instanceof PageResponse) {
+            processResponse(ctx, (PageResponse) msg, promise);
+        } else {
+            super.write(ctx, msg, promise);
+        }
+    }
+
+    private void processResponse(ChannelHandlerContext ctx,
+                                 PageResponse pageResponse,
+                                 ChannelPromise promise) throws Exception {
+        try {
+            pageUrlSet.remove(pageResponse.getPageUrl().getId());
+            sendPageMetaHead(pageResponse.getPageUrl(), ctx);
+
+            if (pageResponse.getContent() != null) {
+                DefaultHttpContent defaultHttpContent = new DefaultHttpContent(pageResponse.getContent());
+                ctx.writeAndFlush(defaultHttpContent);
+            }
+
+            sendPageMetaTail(pageResponse.getPageUrl(), ctx);
+
+            System.out.println(pageUrlSet.size());
+            if (pageUrlSet.size() == 0) {
+                log.trace("last response finish page for: {}", pageResponse.getPageUrl().getUrl());
+                finishResponse(ctx);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void processRequest(ChannelHandlerContext ctx, DownloadRequest downloadRequest) throws Exception {
         log.trace("starting download2: {}", downloadRequest);
 
-        List<PageUrl> urls = new ArrayList<>(downloadRequest.getUrls());
+        int globalDelay = 0;
 
-        AtomicInteger globalDelay = new AtomicInteger();
+        for (PageUrl pageUrl : downloadRequest.getUrls()) {
+            pageUrlSet.add(pageUrl.getId());
 
-        urls.forEach(item -> {
-            globalDelay.addAndGet(downloadRequest.getDelay());
+            globalDelay += downloadRequest.getDelay();
 
-            item.setDelay(item.getDelay() + globalDelay.get());
-        });
+            int localDelay = globalDelay + pageUrl.getDelay();
 
-        out.addAll(urls);
+            if (localDelay == 0) {
+                super.channelRead(ctx, pageUrl);
+            } else {
+                ctx.executor().schedule(() -> forward(ctx, pageUrl), localDelay, TimeUnit.MILLISECONDS);
+            }
+        }
+
+    }
+
+    private void forward(ChannelHandlerContext ctx, PageUrl pageUrl) {
+        try {
+            super.channelRead(ctx, pageUrl);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private void startResponse(ChannelHandlerContext ctx) {
+        DefaultHttpResponse defaultHttpResponse = new DefaultHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK);
+
+        ctx.writeAndFlush(defaultHttpResponse);
+    }
+
+    private void sendPageMetaHead(PageUrl pageUrl, ChannelHandlerContext ctx) {
+        ByteBuf head = ctx.alloc().buffer();
+        head.writeBytes(pageUrl.getId().toString().getBytes());
+        head.writeBytes("\n".getBytes());
+
+        // write page beginning splitter
+        ctx.write(new DefaultHttpContent(head));
+    }
+
+    private void sendPageMetaTail(PageUrl pageUrl, ChannelHandlerContext ctx) {
+        ByteBuf tail = ctx.alloc().buffer();
+        tail.writeBytes("\n".getBytes());
+
+        tail.writeBytes(pageUrl.getId().toString().getBytes());
+
+        tail.writeBytes("\n".getBytes()); // if is not last item, add new line after tail
+
+        // write page ending splitter
+        ctx.writeAndFlush(new DefaultHttpContent(tail));
+    }
+
+    private void finishResponse(ChannelHandlerContext ctx) {
+        DefaultLastHttpContent defaultLastHttpContent = new DefaultLastHttpContent();
+        ctx.writeAndFlush(defaultLastHttpContent);
+        ctx.close();
     }
 }

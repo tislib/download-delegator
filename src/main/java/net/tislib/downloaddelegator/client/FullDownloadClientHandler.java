@@ -7,24 +7,23 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import net.tislib.downloaddelegator.data.PageResponse;
 
+import java.net.URL;
+
 @Log4j2
 @RequiredArgsConstructor
 public class FullDownloadClientHandler extends SimpleChannelInboundHandler<FullHttpResponse> {
     private final DownloadClient downloadClient;
-    private boolean isResponded;
+    private final URL url;
+    private PageResponse response = new PageResponse();
 
     @Override
     public void channelRead0(ChannelHandlerContext ctx, FullHttpResponse fullHttpResponse) {
-        log.trace("received from: {} {} size: {}",
+        log.trace("received from: {} {} {} size: {}",
                 ctx.channel().localAddress(),
                 ctx.channel().remoteAddress(),
+                url,
                 fullHttpResponse.headers().get("Content-Length"));
-
-        PageResponse response = new PageResponse();
         response.setContent(fullHttpResponse.content().copy());
-
-        downloadClient.onFullResponse(response);
-        isResponded = true;
     }
 
     @Override
@@ -36,6 +35,6 @@ public class FullDownloadClientHandler extends SimpleChannelInboundHandler<FullH
     @Override
     public void channelUnregistered(ChannelHandlerContext ctx) throws Exception {
         super.channelUnregistered(ctx);
-        downloadClient.onClose(isResponded);
+        downloadClient.onFinish(response);
     }
 }

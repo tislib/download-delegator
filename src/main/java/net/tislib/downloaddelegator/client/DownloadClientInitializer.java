@@ -12,16 +12,19 @@ import io.netty.handler.ssl.SslHandler;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 
+import java.net.URL;
+
 @Log4j2
 @RequiredArgsConstructor
 public class DownloadClientInitializer extends ChannelInitializer<SocketChannel> {
     private final SslContext sslCtx;
     private final DownloadClient downloadClient;
+    private final URL url;
 
     @Override
     protected void initChannel(SocketChannel ch) {
         ChannelPipeline p = ch.pipeline();
-//        log.debug("connected to: {} {}", ch.localAddress(), ch.remoteAddress());
+        log.debug("connected to: {} {} {}", ch.localAddress(), ch.remoteAddress(), url);
 
         p.addLast(new ChannelOutboundHandlerAdapter());
 
@@ -42,6 +45,6 @@ public class DownloadClientInitializer extends ChannelInitializer<SocketChannel>
 
         p.addLast(new HttpObjectAggregator(1024 * 1024, true));
 
-        p.addLast(new FullDownloadClientHandler(downloadClient));
+        p.addLast(new FullDownloadClientHandler(downloadClient, url));
     }
 }

@@ -59,7 +59,7 @@ public abstract class DownloadClient {
             sslCtx = null;
         }
 
-        bootstrap = bootstrap.handler(new DownloadClientInitializer(sslCtx, this));
+        bootstrap = bootstrap.handler(new DownloadClientInitializer(sslCtx, this, url));
 
         if (!"http".equalsIgnoreCase(scheme) && !"https".equalsIgnoreCase(scheme)) {
             throw new UnsupportedOperationException("Only HTTP(S) is supported.");
@@ -84,13 +84,9 @@ public abstract class DownloadClient {
         });
     }
 
-    public abstract void onFullResponse(PageResponse pageResponse);
-
     public void onError(Throwable th) {
         log.error("onError", th);
     }
 
-    public void onClose(boolean isResponded) {
-
-    }
+    public abstract void onFinish(PageResponse pageResponse);
 }

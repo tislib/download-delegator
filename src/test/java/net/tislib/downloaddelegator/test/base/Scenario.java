@@ -21,7 +21,11 @@ public class Scenario {
         private byte[] responseData;
         private int statusCode;
         private int responseTime;
-        private boolean closeConnectionWithoutResponse; //@todo improve fail scenarios
+        private ScenarioKind scenarioKind;
         private int protocol; // 0-> http, 1 -> ssl, 2 -> http2 (convert to enum)
+    }
+
+    public enum ScenarioKind {
+        OK, CLOSE_CONNECTION, CLOSE_HTTP, CORRUPT_HTTP
     }
 }

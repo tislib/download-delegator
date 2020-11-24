@@ -9,6 +9,7 @@ import org.junit.Rule;
 import org.junit.rules.ErrorCollector;
 import org.junit.rules.ExpectedException;
 
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -37,9 +38,10 @@ public class BaseIntegrationTest {
         List<PageUrl> urls = new ArrayList<>();
 
         for (int i = 0; i < count; i++) {
+            UUID pageId = UUID.randomUUID();
             urls.add(PageUrl.builder()
-                    .id(UUID.randomUUID())
-                    .url(httpServer.getUrl())
+                    .id(pageId)
+                    .url(new URL(httpServer.getUrl() + "/" + pageId))
                     .method("GET")
                     .build());
         }
