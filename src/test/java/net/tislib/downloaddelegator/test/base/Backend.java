@@ -37,7 +37,7 @@ public class Backend {
 
     @SneakyThrows
     public List<PageData> call(DownloadRequest downloadRequest) {
-        URL url = new URL("http://127.0.0.1:8123/download.tar.gz");
+        URL url = new URL("http://127.0.0.1:8123/download");
 
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
 

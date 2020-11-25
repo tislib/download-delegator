@@ -45,7 +45,7 @@ public class Test {
 
         System.out.println(body);
 
-        HttpResponse<byte[]> resp = Unirest.post("http://127.0.0.1:8123/download.tar.gz")
+        HttpResponse<byte[]> resp = Unirest.post("http://127.0.0.1:8123/download")
                 .body(body)
                 .header("Content-type", "application/json")
                 .header("Accept-Encoding", "gzip")
