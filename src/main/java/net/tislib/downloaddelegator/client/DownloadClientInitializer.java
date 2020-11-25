@@ -7,12 +7,14 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.handler.codec.http.HttpClientCodec;
 import io.netty.handler.codec.http.HttpContentDecompressor;
 import io.netty.handler.codec.http.HttpObjectAggregator;
+import io.netty.handler.proxy.HttpProxyHandler;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslHandler;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import net.tislib.downloaddelegator.data.PageUrl;
 
+import java.net.InetSocketAddress;
 import java.net.URL;
 
 @Log4j2
@@ -36,6 +38,10 @@ public class DownloadClientInitializer extends ChannelInitializer<SocketChannel>
             handler.setHandshakeTimeoutMillis(pageUrl.getTimeout());
 
             p.addLast(handler);
+        }
+
+        if (pageUrl.getProxy() != null) {
+            p.addLast(new HttpProxyHandler(new InetSocketAddress(pageUrl.getProxy().getHost(), pageUrl.getProxy().getPort()), pageUrl.getProxy().getUsername(), pageUrl.getProxy().getPassword()));
         }
 
         p.addLast(new HttpClientCodec());

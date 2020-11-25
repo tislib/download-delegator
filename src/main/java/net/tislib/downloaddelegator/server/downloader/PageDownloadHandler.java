@@ -1,11 +1,8 @@
 package net.tislib.downloaddelegator.server.downloader;
 
-import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
-import io.netty.handler.codec.http.DefaultHttpContent;
-import io.netty.handler.codec.http.DefaultLastHttpContent;
 import lombok.extern.log4j.Log4j2;
 import net.tislib.downloaddelegator.base.TimeCalc;
 import net.tislib.downloaddelegator.client.DownloadClient;
@@ -14,6 +11,8 @@ import net.tislib.downloaddelegator.data.PageUrl;
 
 @Log4j2
 public class PageDownloadHandler extends SimpleChannelInboundHandler<PageUrl> {
+
+    private static final TimeCalc timeCalc = new TimeCalc();
 
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, PageUrl pageUrl) {
@@ -48,5 +47,7 @@ public class PageDownloadHandler extends SimpleChannelInboundHandler<PageUrl> {
         log.trace("response page for: {} {}", pageUrl.getUrl(), pageUrl.getId());
 
         ctx.writeAndFlush(pageResponse);
+
+        timeCalc.printSpeedStep();
     }
 }

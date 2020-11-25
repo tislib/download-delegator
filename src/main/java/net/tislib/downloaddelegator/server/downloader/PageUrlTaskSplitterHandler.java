@@ -36,7 +36,6 @@ public class PageUrlTaskSplitterHandler extends ChannelDuplexHandler {
 
         ctx.executor().schedule(() -> {
             if (ctx.channel().isOpen()) {
-                System.out.println(pageUrlSet);
                 ctx.channel().close();
             }
         }, 10000, TimeUnit.MILLISECONDS);
@@ -65,7 +64,6 @@ public class PageUrlTaskSplitterHandler extends ChannelDuplexHandler {
 
             sendPageMetaTail(pageResponse.getPageUrl(), ctx);
 
-            System.out.println(pageUrlSet.size());
             if (pageUrlSet.size() == 0) {
                 log.trace("last response finish page for: {}", pageResponse.getPageUrl().getUrl());
                 finishResponse(ctx);
