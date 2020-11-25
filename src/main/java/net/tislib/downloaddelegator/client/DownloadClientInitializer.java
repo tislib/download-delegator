@@ -54,7 +54,7 @@ public class DownloadClientInitializer extends ChannelInitializer<SocketChannel>
 
         p.addLast(new HttpContentDecompressor());
 
-        p.addLast(new HttpObjectAggregator(1024 * 1024, true));
+        p.addLast(new HttpObjectAggregator(1024 * 1024 * 128, true));
 
         p.addLast(new FullDownloadClientHandler(downloadClient, pageUrl));
     }

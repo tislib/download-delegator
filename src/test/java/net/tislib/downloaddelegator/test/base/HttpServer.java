@@ -82,8 +82,6 @@ public class HttpServer implements TestRule {
 
         Scenario.Request scenarioItem = locateScenarioItem(scenarioIndex.incrementAndGet());
 
-        System.out.println(scenarioItem);
-
         if (scenarioItem.getResponseTime() > 0) {
             ctx.executor().schedule(() ->
                     runRequest(scenarioItem, ctx, msg), scenarioItem.getResponseTime(), TimeUnit.MILLISECONDS);
