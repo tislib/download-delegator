@@ -56,7 +56,8 @@ public abstract class DownloadClient {
         if (ssl) {
             sslCtx = SslContextBuilder.forClient()
                     .sessionTimeout(pageUrl.getTimeout())
-                    .trustManager(InsecureTrustManagerFactory.INSTANCE).build();
+                    .trustManager(InsecureTrustManagerFactory.INSTANCE)
+                    .build();
         } else {
             sslCtx = null;
         }
@@ -78,8 +79,8 @@ public abstract class DownloadClient {
     }
 
     @SneakyThrows
-    public void download(ChannelFuture channelFuture, URL url) {
-        URI uri = new URI(url.toString());
+    public void download(ChannelFuture channelFuture, PageUrl pageUrl) {
+        URI uri = new URI(pageUrl.getUrl().toString());
         // Prepare the HTTP request.
         HttpRequest request = new DefaultFullHttpRequest(
                 HttpVersion.HTTP_1_1, HttpMethod.GET, uri.getRawPath(), Unpooled.EMPTY_BUFFER);
@@ -87,6 +88,12 @@ public abstract class DownloadClient {
         request.headers().set(HttpHeaderNames.HOST, uri.getHost());
         request.headers().set(HttpHeaderNames.CONNECTION, HttpHeaderValues.CLOSE);
         request.headers().set(HttpHeaderNames.ACCEPT_ENCODING, HttpHeaderValues.GZIP);
+
+        if (pageUrl.getHeaders() != null) {
+            pageUrl.getHeaders().forEach(header -> {
+                request.headers().set(header.getName(), header.getValue());
+            });
+        }
 
         channelFuture.addListener(future -> {
             channelFuture.channel().writeAndFlush(request);

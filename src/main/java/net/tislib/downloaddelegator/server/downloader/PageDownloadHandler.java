@@ -37,7 +37,7 @@ public class PageDownloadHandler extends SimpleChannelInboundHandler<PageUrl> {
 
         ChannelFuture channelFuture = downloadClient.connect(pageUrl);
 
-        downloadClient.download(channelFuture, pageUrl.getUrl());
+        downloadClient.download(channelFuture, pageUrl);
     }
 
     private void onDownload(PageResponse pageResponse, PageUrl pageUrl, ChannelHandlerContext ctx) {
