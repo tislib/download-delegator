@@ -24,6 +24,7 @@ public class FullDownloadClientHandler extends SimpleChannelInboundHandler<FullH
                 ctx.channel().remoteAddress(),
                 pageUrl.getId(),
                 fullHttpResponse.headers().get("Content-Length"));
+
         response.setContent(fullHttpResponse.content().copy());
     }
 

@@ -21,6 +21,7 @@ import net.tislib.downloaddelegator.data.PageUrl;
 
 import java.net.InetSocketAddress;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 
 @Log4j2
@@ -79,6 +80,10 @@ public abstract class DownloadClient {
 
     @SneakyThrows
     public void download(ChannelFuture channelFuture, PageUrl pageUrl) {
+        channelFuture.addListener(future -> sendRequest(channelFuture, pageUrl));
+    }
+
+    private void sendRequest(ChannelFuture channelFuture, PageUrl pageUrl) throws URISyntaxException {
         URI uri = new URI(pageUrl.getUrl().toString());
         // Prepare the HTTP request.
         HttpRequest request = new DefaultFullHttpRequest(
@@ -93,10 +98,7 @@ public abstract class DownloadClient {
                 request.headers().set(header.getName(), header.getValue());
             });
         }
-
-        channelFuture.addListener(future -> {
-            channelFuture.channel().writeAndFlush(request);
-        });
+        channelFuture.channel().writeAndFlush(request);
     }
 
     public void onError(Throwable th) {
