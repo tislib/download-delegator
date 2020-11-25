@@ -8,7 +8,7 @@
         <Root level="WARN">
             <AppenderRef ref="STDOUT"/>
         </Root>
-        <Logger name="net.tislib" level="TRACE"/>
+        <Logger name="net.tislib" level="INFO"/>
         <Logger name="kong.unirest" level="INFO"/>
     </Loggers>
 </Configuration>
