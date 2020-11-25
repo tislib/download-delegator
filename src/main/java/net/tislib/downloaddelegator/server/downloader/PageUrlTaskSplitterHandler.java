@@ -36,9 +36,10 @@ public class PageUrlTaskSplitterHandler extends ChannelDuplexHandler {
 
         ctx.executor().schedule(() -> {
             if (ctx.channel().isOpen()) {
+                log.warn("Closing connection for no response");
                 ctx.channel().close();
             }
-        }, 10000, TimeUnit.MILLISECONDS);
+        }, 30, TimeUnit.MINUTES);
     }
 
     @Override
