@@ -3,6 +3,7 @@ package net.tislib.downloaddelegator.client;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelOption;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.http.*;
 import io.netty.handler.logging.LogLevel;
@@ -16,6 +17,7 @@ import net.tislib.downloaddelegator.base.EventLoopGroups;
 import net.tislib.downloaddelegator.config.ApplicationConfig;
 import net.tislib.downloaddelegator.config.Config;
 import net.tislib.downloaddelegator.data.PageResponse;
+import net.tislib.downloaddelegator.data.PageUrl;
 
 import java.net.InetSocketAddress;
 import java.net.URI;
@@ -25,8 +27,8 @@ import java.net.URL;
 public abstract class DownloadClient {
 
     @SneakyThrows
-    public ChannelFuture connect(URL url) {
-        URI uri = new URI(url.toString());
+    public ChannelFuture connect(PageUrl pageUrl) {
+        URI uri = new URI(pageUrl.getUrl().toString());
         String scheme = uri.getScheme() == null ? "http" : uri.getScheme();
         String host = uri.getHost() == null ? "127.0.0.1" : uri.getHost();
         int port = uri.getPort();
@@ -53,13 +55,20 @@ public abstract class DownloadClient {
         final SslContext sslCtx;
         if (ssl) {
             sslCtx = SslContextBuilder.forClient()
-                    .sessionTimeout(500000)
+                    .sessionTimeout(pageUrl.getTimeout())
                     .trustManager(InsecureTrustManagerFactory.INSTANCE).build();
         } else {
             sslCtx = null;
         }
 
-        bootstrap = bootstrap.handler(new DownloadClientInitializer(sslCtx, this, url));
+        if (pageUrl.getTimeout() <= 0) {
+            pageUrl.setTimeout(Integer.parseInt(ApplicationConfig.getConfig(Config.TIMEOUT)));
+        }
+
+        bootstrap.option(ChannelOption.SO_TIMEOUT, pageUrl.getTimeout());
+        bootstrap.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, pageUrl.getTimeout());
+
+        bootstrap = bootstrap.handler(new DownloadClientInitializer(sslCtx, this, pageUrl));
 
         if (!"http".equalsIgnoreCase(scheme) && !"https".equalsIgnoreCase(scheme)) {
             throw new UnsupportedOperationException("Only HTTP(S) is supported.");

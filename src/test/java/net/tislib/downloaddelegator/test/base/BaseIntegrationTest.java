@@ -43,6 +43,7 @@ public class BaseIntegrationTest {
                     .id(pageId)
                     .url(new URL(httpServer.getUrl() + "/" + pageId))
                     .method("GET")
+                    .timeout(1000)
                     .build());
         }
 

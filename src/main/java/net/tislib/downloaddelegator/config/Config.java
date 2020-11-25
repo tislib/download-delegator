@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 public enum Config {
     ADDR("server.addr", "0.0.0.0"),
     PORT("server.port", "8123"),
+    TIMEOUT("client.timeout", "10000"),
     TRACE_SERVER("logging.server.trace", "false"),
     TRACE_CLIENT("logging.client.trace", "false");
 

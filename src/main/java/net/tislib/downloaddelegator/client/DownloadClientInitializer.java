@@ -11,6 +11,7 @@ import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslHandler;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
+import net.tislib.downloaddelegator.data.PageUrl;
 
 import java.net.URL;
 
@@ -19,12 +20,12 @@ import java.net.URL;
 public class DownloadClientInitializer extends ChannelInitializer<SocketChannel> {
     private final SslContext sslCtx;
     private final DownloadClient downloadClient;
-    private final URL url;
+    private final PageUrl pageUrl;
 
     @Override
     protected void initChannel(SocketChannel ch) {
         ChannelPipeline p = ch.pipeline();
-        log.debug("connected to: {} {} {}", ch.localAddress(), ch.remoteAddress(), url);
+        log.debug("connected to: {} {} {}", ch.localAddress(), ch.remoteAddress(), pageUrl.getId());
 
         p.addLast(new ChannelOutboundHandlerAdapter());
 
@@ -32,19 +33,17 @@ public class DownloadClientInitializer extends ChannelInitializer<SocketChannel>
         if (sslCtx != null) {
             SslHandler handler = sslCtx.newHandler(p.channel().alloc());
 
-            handler.setHandshakeTimeoutMillis(500000);
+            handler.setHandshakeTimeoutMillis(pageUrl.getTimeout());
 
             p.addLast(handler);
         }
 
         p.addLast(new HttpClientCodec());
 
-//        p.addLast(new LoggingHandler(LogLevel.ERROR));
-
         p.addLast(new HttpContentDecompressor());
 
         p.addLast(new HttpObjectAggregator(1024 * 1024, true));
 
-        p.addLast(new FullDownloadClientHandler(downloadClient, url));
+        p.addLast(new FullDownloadClientHandler(downloadClient, pageUrl));
     }
 }

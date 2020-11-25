@@ -36,7 +36,7 @@ public class PageDownloadHandler extends SimpleChannelInboundHandler<PageUrl> {
             }
         };
 
-        ChannelFuture channelFuture = downloadClient.connect(pageUrl.getUrl());
+        ChannelFuture channelFuture = downloadClient.connect(pageUrl);
 
         downloadClient.download(channelFuture, pageUrl.getUrl());
     }

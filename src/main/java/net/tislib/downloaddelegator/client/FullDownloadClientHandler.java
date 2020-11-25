@@ -6,6 +6,7 @@ import io.netty.handler.codec.http.FullHttpResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import net.tislib.downloaddelegator.data.PageResponse;
+import net.tislib.downloaddelegator.data.PageUrl;
 
 import java.net.URL;
 
@@ -13,7 +14,7 @@ import java.net.URL;
 @RequiredArgsConstructor
 public class FullDownloadClientHandler extends SimpleChannelInboundHandler<FullHttpResponse> {
     private final DownloadClient downloadClient;
-    private final URL url;
+    private final PageUrl pageUrl;
     private PageResponse response = new PageResponse();
 
     @Override
@@ -21,7 +22,7 @@ public class FullDownloadClientHandler extends SimpleChannelInboundHandler<FullH
         log.trace("received from: {} {} {} size: {}",
                 ctx.channel().localAddress(),
                 ctx.channel().remoteAddress(),
-                url,
+                pageUrl.getId(),
                 fullHttpResponse.headers().get("Content-Length"));
         response.setContent(fullHttpResponse.content().copy());
     }
