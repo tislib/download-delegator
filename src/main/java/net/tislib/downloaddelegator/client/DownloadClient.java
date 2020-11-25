@@ -66,7 +66,6 @@ public abstract class DownloadClient {
             pageUrl.setTimeout(Integer.parseInt(ApplicationConfig.getConfig(Config.TIMEOUT)));
         }
 
-        bootstrap.option(ChannelOption.SO_TIMEOUT, pageUrl.getTimeout());
         bootstrap.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, pageUrl.getTimeout());
 
         bootstrap = bootstrap.handler(new DownloadClientInitializer(sslCtx, this, pageUrl));
