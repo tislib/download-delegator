@@ -155,8 +155,10 @@ public class PageUrlTaskSplitterHandler extends ChannelDuplexHandler {
     private void dumpMemoryStats(ChannelHandlerContext ctx) {
         PooledByteBufAllocator pooledByteBufAllocator = (PooledByteBufAllocator) ctx.alloc();
 
-        log.debug("Memory stats dump: {}; {}", pooledByteBufAllocator.dumpStats(), pooledByteBufAllocator.metric().toString());
+        log.debug("Memory stats dump: {};  {}; {}", pooledByteBufAllocator.toString(), pooledByteBufAllocator.dumpStats(), pooledByteBufAllocator.metric().toString());
 
+        pooledByteBufAllocator.buffer();
+        System.out.println(pooledByteBufAllocator.isDirectBufferPooled());
 
     }
 }

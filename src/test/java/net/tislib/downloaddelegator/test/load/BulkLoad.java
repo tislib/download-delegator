@@ -41,10 +41,6 @@ public class BulkLoad {
     @Rule
     public HttpServer httpServer = new HttpServer();
 
-    static {
-        Configurator.setRootLevel(Level.INFO);
-    }
-
     @SneakyThrows
     @Test
     public void load1() {
@@ -97,7 +93,7 @@ public class BulkLoad {
         DownloadRequest downloadRequest = new DownloadRequest();
         List<PageUrl> urls = new ArrayList<>();
 
-        for (int i = 0; i < 500; i++) {
+        for (int i = 0; i < 300; i++) {
             UUID pageId = UUID.randomUUID();
 
             urls.add(PageUrl.builder()
@@ -109,7 +105,6 @@ public class BulkLoad {
         }
 
         downloadRequest.setUrls(urls);
-        downloadRequest.setDelay(1);
 
         backend.call(downloadRequest);
     }
