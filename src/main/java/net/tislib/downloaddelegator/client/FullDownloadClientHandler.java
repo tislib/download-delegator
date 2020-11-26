@@ -15,7 +15,7 @@ import net.tislib.downloaddelegator.data.PageUrl;
 public class FullDownloadClientHandler extends SimpleChannelInboundHandler<FullHttpResponse> {
     private final DownloadClient downloadClient;
     private final PageUrl pageUrl;
-    private PageResponse response = new PageResponse();
+    private final PageResponse response = new PageResponse();
 
     @Override
     public void channelRead0(ChannelHandlerContext ctx, FullHttpResponse fullHttpResponse) {
@@ -26,6 +26,7 @@ public class FullDownloadClientHandler extends SimpleChannelInboundHandler<FullH
                 fullHttpResponse.headers().get("Content-Length"));
 
         response.setContent(fullHttpResponse.content().retain());
+        ctx.close();
     }
 
     @Override

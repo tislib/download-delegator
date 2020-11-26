@@ -1,8 +1,12 @@
 package net.tislib.downloaddelegator.client;
 
+import io.netty.channel.ChannelDuplexHandler;
+import io.netty.channel.ChannelHandler;
+import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOutboundHandlerAdapter;
 import io.netty.channel.ChannelPipeline;
+import io.netty.channel.ChannelPromise;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.handler.codec.http.HttpClientCodec;
 import io.netty.handler.codec.http.HttpContentDecompressor;
@@ -19,7 +23,9 @@ import net.tislib.downloaddelegator.config.Config;
 import net.tislib.downloaddelegator.data.PageUrl;
 
 import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.net.URL;
+import java.util.concurrent.TimeUnit;
 
 @Log4j2
 @RequiredArgsConstructor
@@ -32,6 +38,19 @@ public class DownloadClientInitializer extends ChannelInitializer<SocketChannel>
     protected void initChannel(SocketChannel ch) {
         ChannelPipeline p = ch.pipeline();
         log.debug("connected to: {} {} {}", ch.localAddress(), ch.remoteAddress(), pageUrl.getId());
+
+        p.addLast(new ChannelDuplexHandler(){
+            @Override
+            public void connect(ChannelHandlerContext ctx, SocketAddress remoteAddress, SocketAddress localAddress, ChannelPromise promise) throws Exception {
+                super.connect(ctx, remoteAddress, localAddress, promise);
+
+                ctx.executor().schedule(() -> {
+                    if (ctx.channel().isOpen() || ctx.channel().isActive()) {
+                        ctx.close();
+                    }
+                }, pageUrl.getTimeout(), TimeUnit.MILLISECONDS);
+            }
+        });
 
         if (ApplicationConfig.getBoolean(Config.TRACE_CLIENT)) {
             p.addLast(new LoggingHandler(LogLevel.ERROR));
