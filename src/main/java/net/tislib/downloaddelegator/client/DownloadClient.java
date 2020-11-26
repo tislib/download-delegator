@@ -83,11 +83,12 @@ public abstract class DownloadClient {
         channelFuture.addListener(future -> sendRequest(channelFuture, pageUrl));
     }
 
-    private void sendRequest(ChannelFuture channelFuture, PageUrl pageUrl) throws URISyntaxException {
+    private void sendRequest(ChannelFuture channelFuture,
+                             PageUrl pageUrl) throws URISyntaxException {
         URI uri = new URI(pageUrl.getUrl().toString());
         // Prepare the HTTP request.
         HttpRequest request = new DefaultFullHttpRequest(
-                HttpVersion.HTTP_1_1, HttpMethod.GET, uri.getRawPath(), Unpooled.EMPTY_BUFFER);
+                HttpVersion.HTTP_1_1, HttpMethod.GET, uri.getRawPath());
 
         request.headers().set(HttpHeaderNames.HOST, uri.getHost());
         request.headers().set(HttpHeaderNames.CONNECTION, HttpHeaderValues.CLOSE);

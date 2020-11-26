@@ -39,7 +39,7 @@ public class DownloadClientInitializer extends ChannelInitializer<SocketChannel>
         ChannelPipeline p = ch.pipeline();
         log.debug("connected to: {} {} {}", ch.localAddress(), ch.remoteAddress(), pageUrl.getId());
 
-        p.addLast(new ChannelDuplexHandler(){
+        p.addLast(new ChannelDuplexHandler() {
             @Override
             public void connect(ChannelHandlerContext ctx, SocketAddress remoteAddress, SocketAddress localAddress, ChannelPromise promise) throws Exception {
                 super.connect(ctx, remoteAddress, localAddress, promise);
@@ -57,7 +57,11 @@ public class DownloadClientInitializer extends ChannelInitializer<SocketChannel>
         }
 
         if (pageUrl.getProxy() != null) {
-            p.addLast(new HttpProxyHandler(new InetSocketAddress(pageUrl.getProxy().getHost(), pageUrl.getProxy().getPort()), pageUrl.getProxy().getUsername(), pageUrl.getProxy().getPassword()));
+            p.addLast(new HttpProxyHandler(new InetSocketAddress(
+                    pageUrl.getProxy().getHost(),
+                    pageUrl.getProxy().getPort()),
+                    pageUrl.getProxy().getUsername(),
+                    pageUrl.getProxy().getPassword()));
         }
 
         // Enable HTTPS if necessary.
