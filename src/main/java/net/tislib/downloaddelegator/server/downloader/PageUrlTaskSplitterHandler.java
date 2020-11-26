@@ -58,7 +58,7 @@ public class PageUrlTaskSplitterHandler extends ChannelDuplexHandler {
             pageUrlSet.remove(pageResponse.getPageUrl().getId());
             sendPageMetaHead(pageResponse.getPageUrl(), ctx);
 
-            ReferenceCountUtil.touch(pageResponse.getContent());
+            ReferenceCountUtil.touch(pageResponse.getContent(), pageResponse.getId());
 
             if (pageResponse.getContent() != null) {
                 DefaultHttpContent defaultHttpContent = new DefaultHttpContent(pageResponse.getContent());
