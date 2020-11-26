@@ -1,6 +1,7 @@
 package net.tislib.downloaddelegator.server.downloader;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
@@ -39,7 +40,7 @@ public class PageUrlTaskSplitterHandler extends ChannelDuplexHandler {
                 log.warn("Closing connection for no response");
                 ctx.channel().close();
             }
-        }, 30, TimeUnit.MINUTES);
+        }, 2, TimeUnit.MINUTES);
     }
 
     @Override
@@ -67,8 +68,10 @@ public class PageUrlTaskSplitterHandler extends ChannelDuplexHandler {
 
             sendPageMetaTail(pageResponse.getPageUrl(), ctx);
 
+            log.debug("page downloaded: {} {}", pageResponse.getPageUrl().getUrl(), pageResponse.getPageUrl().getId());
+
             if (pageUrlSet.size() == 0) {
-                log.trace("last response finish page for: {}", pageResponse.getPageUrl().getUrl());
+                log.debug("last response finish page for: {}", pageResponse.getPageUrl().getUrl());
                 finishResponse(ctx);
             }
         } catch (Exception e) {
@@ -78,6 +81,7 @@ public class PageUrlTaskSplitterHandler extends ChannelDuplexHandler {
 
     private void processRequest(ChannelHandlerContext ctx, DownloadRequest downloadRequest) throws Exception {
         log.trace("starting download2: {}", downloadRequest);
+        log.debug("starting download page count: {}", downloadRequest.getUrls().size());
 
         int globalDelay = 0;
 
@@ -142,5 +146,17 @@ public class PageUrlTaskSplitterHandler extends ChannelDuplexHandler {
         DefaultLastHttpContent defaultLastHttpContent = new DefaultLastHttpContent();
         ctx.writeAndFlush(defaultLastHttpContent);
         ctx.close();
+
+        if (log.isDebugEnabled()) {
+            dumpMemoryStats(ctx);
+        }
+    }
+
+    private void dumpMemoryStats(ChannelHandlerContext ctx) {
+        PooledByteBufAllocator pooledByteBufAllocator = (PooledByteBufAllocator) ctx.alloc();
+
+        log.debug("Memory stats dump: {}; {}", pooledByteBufAllocator.dumpStats(), pooledByteBufAllocator.metric().toString());
+
+
     }
 }

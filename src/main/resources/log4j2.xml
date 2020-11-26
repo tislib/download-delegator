@@ -6,9 +6,9 @@
         </Console>
     </Appenders>
     <Loggers>
-        <Root level="TRACE">
+        <Root level="DEBUG">
             <AppenderRef ref="STDOUT"/>
         </Root>
-        <Logger name="net.tislib" level="TRACE"/>
+<!--        <Logger name="net.tislib" level="DEBUG"/>-->
     </Loggers>
 </Configuration>

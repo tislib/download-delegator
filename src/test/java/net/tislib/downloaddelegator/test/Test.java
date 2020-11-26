@@ -2,6 +2,7 @@ package net.tislib.downloaddelegator.test;
 
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.netty.buffer.PooledByteBufAllocator;
 import kong.unirest.HttpResponse;
 import kong.unirest.Unirest;
 import net.tislib.downloaddelegator.data.DownloadRequest;
