@@ -5,6 +5,7 @@ import io.netty.channel.ChannelOutboundHandler;
 import io.netty.channel.ChannelPromise;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.handler.codec.http.FullHttpResponse;
+import io.netty.util.ReferenceCountUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import net.tislib.downloaddelegator.data.PageResponse;
@@ -26,6 +27,9 @@ public class FullDownloadClientHandler extends SimpleChannelInboundHandler<FullH
                 fullHttpResponse.headers().get("Content-Length"));
 
         response.setContent(fullHttpResponse.content().retain());
+
+        ReferenceCountUtil.touch(response);
+
         ctx.close();
     }
 

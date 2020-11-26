@@ -6,6 +6,7 @@ import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.handler.codec.MessageToMessageCodec;
 import io.netty.handler.codec.MessageToMessageDecoder;
 import io.netty.handler.codec.http.FullHttpRequest;
+import io.netty.util.ReferenceCountUtil;
 import lombok.extern.log4j.Log4j2;
 import net.tislib.downloaddelegator.data.DownloadRequest;
 
@@ -21,6 +22,8 @@ public class OperationSwitchHandler extends MessageToMessageDecoder<FullHttpRequ
     protected void decode(ChannelHandlerContext ctx, FullHttpRequest request, List<Object> out) throws Exception {
         String action = request.method().name() + " " + request.uri();
         String body = request.content().toString(Charset.defaultCharset());
+
+        ReferenceCountUtil.touch(request);
 
         log.debug("Handling request: {} {}", action, ctx.channel().remoteAddress());
 

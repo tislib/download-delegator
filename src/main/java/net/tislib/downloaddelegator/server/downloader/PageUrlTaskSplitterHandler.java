@@ -9,6 +9,7 @@ import io.netty.handler.codec.http.DefaultHttpResponse;
 import io.netty.handler.codec.http.DefaultLastHttpContent;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpVersion;
+import io.netty.util.ReferenceCountUtil;
 import lombok.extern.log4j.Log4j2;
 import net.tislib.downloaddelegator.data.DownloadRequest;
 import net.tislib.downloaddelegator.data.PageResponse;
@@ -56,6 +57,8 @@ public class PageUrlTaskSplitterHandler extends ChannelDuplexHandler {
         try {
             pageUrlSet.remove(pageResponse.getPageUrl().getId());
             sendPageMetaHead(pageResponse.getPageUrl(), ctx);
+
+            ReferenceCountUtil.touch(pageResponse.getContent());
 
             if (pageResponse.getContent() != null) {
                 DefaultHttpContent defaultHttpContent = new DefaultHttpContent(pageResponse.getContent());
@@ -110,6 +113,9 @@ public class PageUrlTaskSplitterHandler extends ChannelDuplexHandler {
 
     private void sendPageMetaHead(PageUrl pageUrl, ChannelHandlerContext ctx) {
         ByteBuf head = ctx.alloc().buffer();
+
+        ReferenceCountUtil.touch(head);
+
         head.writeBytes(pageUrl.getId().toString().getBytes());
         head.writeBytes("\n".getBytes());
 
@@ -119,6 +125,9 @@ public class PageUrlTaskSplitterHandler extends ChannelDuplexHandler {
 
     private void sendPageMetaTail(PageUrl pageUrl, ChannelHandlerContext ctx) {
         ByteBuf tail = ctx.alloc().buffer();
+
+        ReferenceCountUtil.touch(tail);
+
         tail.writeBytes("\n".getBytes());
 
         tail.writeBytes(pageUrl.getId().toString().getBytes());
