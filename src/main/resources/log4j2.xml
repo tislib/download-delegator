@@ -9,7 +9,6 @@
         <Root level="TRACE">
             <AppenderRef ref="STDOUT"/>
         </Root>
-        <Logger name="net.tislib" level="INFO"/>
-        <Logger name="kong.unirest" level="INFO"/>
+        <Logger name="net.tislib" level="TRACE"/>
     </Loggers>
 </Configuration>
