@@ -29,7 +29,6 @@ public class BaseIntegrationTest {
 
     static {
         backend = new Backend();
-        Configurator.setRootLevel(Level.TRACE);
     }
 
     @SneakyThrows

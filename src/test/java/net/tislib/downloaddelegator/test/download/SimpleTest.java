@@ -49,6 +49,25 @@ public class SimpleTest extends BaseIntegrationTest {
     }
 
     @Test
+    public void multiDownloadTest() throws Exception {
+        httpServer.scenario(
+                Scenario.builder()
+                        .request(Scenario.Request.builder()
+                                .responseData("hello-world".getBytes())
+                                .build())
+                        .build()
+        );
+
+        for (int i = 0; i < 100; i++) {
+            List<PageData> response = backend.call(prepareDownloadRequest(50));
+
+            assertEquals(response.size(), 50);
+
+            response.forEach(item -> assertEquals(new String(item.getContent()), "hello-world"));
+        }
+    }
+
+    @Test
     @Ignore
     public void simpleMassiveRequests() {
         try {
