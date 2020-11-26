@@ -68,7 +68,7 @@ public class PageUrlTaskSplitterHandler extends ChannelDuplexHandler {
 
             sendPageMetaTail(pageResponse.getPageUrl(), ctx);
 
-            log.debug("page downloaded: {} {}", pageResponse.getPageUrl().getUrl(), pageResponse.getPageUrl().getId());
+            log.trace("page downloaded: {} {}", pageResponse.getPageUrl().getUrl(), pageResponse.getPageUrl().getId());
 
             if (pageUrlSet.size() == 0) {
                 log.debug("last response finish page for: {}", pageResponse.getPageUrl().getUrl());
