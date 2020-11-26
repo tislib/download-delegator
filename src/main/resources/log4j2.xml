@@ -10,5 +10,6 @@
             <AppenderRef ref="STDOUT"/>
         </Root>
 <!--        <Logger name="net.tislib" level="DEBUG"/>-->
+        <Logger name="io.netty.handler.ssl" level="INFO"/>
     </Loggers>
 </Configuration>
