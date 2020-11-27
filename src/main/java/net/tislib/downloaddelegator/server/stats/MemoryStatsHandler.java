@@ -26,6 +26,19 @@ public class MemoryStatsHandler extends SimpleChannelInboundHandler<MemoryStatsR
 
     private String getMemoryStats(ChannelHandlerContext ctx, MemoryStatsRequest msg) {
         PooledByteBufAllocator pooledByteBufAllocator = (PooledByteBufAllocator) ctx.alloc();
-        return String.format("Memory stats dump: %s;  %s", pooledByteBufAllocator.toString(), pooledByteBufAllocator.metric().toString());
+
+        StringBuilder stringBuilder = new StringBuilder();
+
+        String content = String.format("Memory stats dump: %s;  %s", pooledByteBufAllocator.toString(), pooledByteBufAllocator.metric().toString());
+
+        stringBuilder.append("<pre>");
+        stringBuilder.append(content);
+        stringBuilder.append("</pre>");
+
+        stringBuilder.append("<pre>");
+        stringBuilder.append(pooledByteBufAllocator.dumpStats());
+        stringBuilder.append("</pre>");
+
+        return stringBuilder.toString();
     }
 }
