@@ -32,7 +32,7 @@ public class Test {
         for (int i = 0; i < 10; i++) {
             urls.add(PageUrl.builder()
                     .id(UUID.randomUUID())
-                    .url(new URL("http://tisserv.net"))
+                    .url(new URL("https://ug.tisserv.net"))
                     .method("GET")
                     .bind("172.20.11.45")
                     .build());
@@ -46,7 +46,7 @@ public class Test {
 
         System.out.println(body);
 
-        HttpResponse<byte[]> resp = Unirest.post("http://dd.tisserv.net/download")
+        HttpResponse<byte[]> resp = Unirest.post("http://localhost:8123/download")
                 .body(body)
                 .header("Content-type", "application/json")
                 .header("Accept-Encoding", "gzip")
