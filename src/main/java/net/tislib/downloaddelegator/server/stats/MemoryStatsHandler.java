@@ -20,7 +20,6 @@ public class MemoryStatsHandler extends SimpleChannelInboundHandler<MemoryStatsR
         );
 
         String content = getMemoryStats((ByteBufAllocatorMetricProvider) ctx.alloc(), msg);
-        content += getMemoryStats(PooledByteBufAllocator.DEFAULT, msg);
 
         fullHttpResponse.content().writeBytes(content.getBytes());
         ctx.writeAndFlush(fullHttpResponse);
