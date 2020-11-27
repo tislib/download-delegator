@@ -40,7 +40,7 @@ public class BaseIntegrationTest {
             UUID pageId = UUID.randomUUID();
             urls.add(PageUrl.builder()
                     .id(pageId)
-                    .url(new URL(httpServer.getUrl() + "/" + pageId))
+                    .url(new URL("https://ug.tisserv.net/"))
                     .method("GET")
                     .timeout(1000)
                     .build());

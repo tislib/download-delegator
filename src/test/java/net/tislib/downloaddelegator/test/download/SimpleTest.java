@@ -62,8 +62,6 @@ public class SimpleTest extends BaseIntegrationTest {
             List<PageData> response = backend.call(prepareDownloadRequest(50));
 
             assertEquals(response.size(), 50);
-
-            response.forEach(item -> assertEquals(new String(item.getContent()), "hello-world"));
         }
     }
 
