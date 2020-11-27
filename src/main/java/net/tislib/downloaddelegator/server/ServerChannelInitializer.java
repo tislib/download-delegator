@@ -15,6 +15,7 @@ import net.tislib.downloaddelegator.config.ApplicationConfig;
 import net.tislib.downloaddelegator.config.Config;
 import net.tislib.downloaddelegator.server.downloader.PageDownloadHandler;
 import net.tislib.downloaddelegator.server.downloader.PageUrlTaskSplitterHandler;
+import net.tislib.downloaddelegator.server.stats.MemoryStatsHandler;
 
 @Log4j2
 @RequiredArgsConstructor
@@ -42,5 +43,8 @@ public class ServerChannelInitializer extends ChannelInitializer<SocketChannel> 
         // handle download request
         p.addLast(new PageUrlTaskSplitterHandler());
         p.addLast(new PageDownloadHandler());
+
+        // handle memory stats
+        p.addLast(new MemoryStatsHandler());
     }
 }
