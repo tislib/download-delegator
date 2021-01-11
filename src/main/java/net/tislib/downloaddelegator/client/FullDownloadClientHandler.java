@@ -11,6 +11,9 @@ import lombok.extern.log4j.Log4j2;
 import net.tislib.downloaddelegator.data.PageResponse;
 import net.tislib.downloaddelegator.data.PageUrl;
 
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
+
 @Log4j2
 @RequiredArgsConstructor
 public class FullDownloadClientHandler extends SimpleChannelInboundHandler<FullHttpResponse> {
@@ -27,7 +30,10 @@ public class FullDownloadClientHandler extends SimpleChannelInboundHandler<FullH
                 fullHttpResponse.headers().get("Content-Length"));
 
         response.setContent(fullHttpResponse.content().retain());
-
+        response.setHttpStatus(fullHttpResponse.status().code());
+        response.setHeaders(
+                StreamSupport.stream(fullHttpResponse.headers().spliterator(), false).collect(Collectors.toList())
+        );
         ReferenceCountUtil.touch(response);
 
         ctx.close();

@@ -32,9 +32,8 @@ public class Test {
         for (int i = 0; i < 10; i++) {
             urls.add(PageUrl.builder()
                     .id(UUID.randomUUID())
-                    .url(new URL("https://ug.tisserv.net"))
+                    .url(new URL("https://www.imdb.com/title/tt10838180"))
                     .method("GET")
-                    .bind("172.20.11.45")
                     .build());
         }
 
