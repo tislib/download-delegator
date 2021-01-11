@@ -1,23 +1,17 @@
 package net.tislib.downloaddelegator.test.base;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import kong.unirest.HttpResponse;
-import kong.unirest.Unirest;
 import lombok.SneakyThrows;
 import net.tislib.downloaddelegator.data.DownloadRequest;
 import net.tislib.downloaddelegator.server.Server;
-import org.junit.platform.commons.util.StringUtils;
-import org.junit.rules.ExternalResource;
 
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.net.URLConnection;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.Consumer;
-import java.util.function.Supplier;
 
 public class Backend {
 

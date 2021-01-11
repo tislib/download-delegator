@@ -1,7 +1,6 @@
 package net.tislib.downloaddelegator.server.downloader;
 
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
@@ -15,8 +14,11 @@ import lombok.extern.log4j.Log4j2;
 import net.tislib.downloaddelegator.data.DownloadRequest;
 import net.tislib.downloaddelegator.data.PageResponse;
 import net.tislib.downloaddelegator.data.PageUrl;
+import net.tislib.downloaddelegator.util.UrlHelper;
 
+import java.net.URL;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -56,6 +58,19 @@ public class PageUrlTaskSplitterHandler extends ChannelDuplexHandler {
                                  PageResponse pageResponse,
                                  ChannelPromise promise) throws Exception {
         try {
+            if (String.valueOf(pageResponse.getHttpStatus()).startsWith("3")) {
+                for (Map.Entry<String, String> header : pageResponse.getHeaders()) {
+                    if (header.getKey().equalsIgnoreCase("location")) {
+                        String fullUrl = UrlHelper.makeFullUrl(header.getValue(), pageResponse);
+
+                        pageResponse.getPageUrl().setUrl(new URL(fullUrl));
+
+                        super.channelRead(ctx, pageResponse.getPageUrl());
+                        return;
+                    }
+                }
+            }
+
             pageUrlSet.remove(pageResponse.getPageUrl().getId());
             sendPageMetaHead(pageResponse.getPageUrl(), ctx);
 
@@ -69,13 +84,14 @@ public class PageUrlTaskSplitterHandler extends ChannelDuplexHandler {
             sendPageMetaTail(pageResponse.getPageUrl(), ctx);
 
             log.trace("page downloaded: {} {}", pageResponse.getPageUrl().getUrl(), pageResponse.getPageUrl().getId());
-
-            if (pageUrlSet.size() == 0) {
-                log.debug("last response finish page for: {}", pageResponse.getPageUrl().getUrl());
-                finishResponse(ctx);
-            }
         } catch (Exception e) {
             e.printStackTrace();
+            pageUrlSet.remove(pageResponse.getPageUrl().getId());
+        }
+
+        if (pageUrlSet.size() == 0) {
+            log.debug("last response finish page for: {}", pageResponse.getPageUrl().getUrl());
+            finishResponse(ctx);
         }
     }
 
