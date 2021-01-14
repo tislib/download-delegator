@@ -72,7 +72,7 @@ func (app *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		break
 	case "GET /get":
 		status := app.get(w, r)
-		log.Print("download: ", r.RequestURI, r.RemoteAddr, status)
+		log.Print("download: ", r.RequestURI, " ", r.RemoteAddr, " ", status)
 	}
 }
 
@@ -91,7 +91,7 @@ func (app *App) get(w http.ResponseWriter, r *http.Request) uint64 {
 	if err != nil {
 		w.WriteHeader(400)
 		w.Write([]byte(err.Error()))
-		log.Print(err)
+		log.Print("url parse error: ", err)
 		return 500
 	}
 
@@ -110,7 +110,7 @@ func (app *App) get(w http.ResponseWriter, r *http.Request) uint64 {
 	req, err := http.NewRequest("GET", urlParam, nil)
 
 	if err != nil {
-		log.Print(err)
+		log.Print("request creation error", err)
 		w.WriteHeader(400)
 		return 400
 	}
@@ -118,7 +118,7 @@ func (app *App) get(w http.ResponseWriter, r *http.Request) uint64 {
 	resp, err := client.Do(req)
 
 	if err != nil {
-		log.Print(err)
+		log.Print("request execution error", err)
 		w.WriteHeader(500)
 		return 500
 	}
@@ -130,7 +130,7 @@ func (app *App) get(w http.ResponseWriter, r *http.Request) uint64 {
 	_, err = io.CopyN(gzw, resp.Body, 1024*1024*1024)
 
 	if err != nil && err != io.EOF {
-		log.Print(err)
+		log.Print("io error", err)
 		w.WriteHeader(500)
 		return 500
 	}
