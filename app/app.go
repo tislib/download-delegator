@@ -71,8 +71,8 @@ func (app *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		app.test(w, r)
 		break
 	case "GET /get":
-		app.get(w, r)
-		log.Print("download: ", r.RequestURI, r.RemoteAddr, r.Response.StatusCode, r.Response.ContentLength)
+		status := app.get(w, r)
+		log.Print("download: ", r.RequestURI, r.RemoteAddr, status)
 	}
 }
 
@@ -82,16 +82,17 @@ func (app *App) test(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(r.RequestURI))
 }
 
-func (app *App) get(w http.ResponseWriter, r *http.Request) {
+func (app *App) get(w http.ResponseWriter, r *http.Request) uint64 {
 	defer r.Body.Close()
 	gzw := gzip.NewWriter(w)
 
 	query, err := url.ParseQuery(r.URL.RawQuery)
 
 	if err != nil {
+		w.WriteHeader(400)
 		w.Write([]byte(err.Error()))
 		log.Print(err)
-		return
+		return 500
 	}
 
 	urlParam := query.Get("url")
@@ -99,7 +100,7 @@ func (app *App) get(w http.ResponseWriter, r *http.Request) {
 	if urlParam == "" {
 		w.WriteHeader(404)
 		w.Write([]byte("invalid url"))
-		return
+		return 404
 	}
 
 	client := new(http.Client)
@@ -111,7 +112,7 @@ func (app *App) get(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Print(err)
 		w.WriteHeader(400)
-		return
+		return 400
 	}
 
 	resp, err := client.Do(req)
@@ -119,7 +120,7 @@ func (app *App) get(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Print(err)
 		w.WriteHeader(500)
-		return
+		return 500
 	}
 
 	defer resp.Body.Close()
@@ -131,9 +132,10 @@ func (app *App) get(w http.ResponseWriter, r *http.Request) {
 	if err != nil && err != io.EOF {
 		log.Print(err)
 		w.WriteHeader(500)
-		return
+		return 500
 	}
 
+	return 200
 }
 
 func (app *App) configureProxy(client *http.Client) {
