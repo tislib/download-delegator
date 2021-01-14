@@ -72,6 +72,7 @@ func (app *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		break
 	case "GET /get":
 		app.get(w, r)
+		log.Print("download: ", r.RequestURI, r.RemoteAddr, r.Response.StatusCode, r.Response.ContentLength)
 	}
 }
 
