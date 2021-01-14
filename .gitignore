@@ -26,3 +26,7 @@ build
 target
 out
 .gradle
+node_modules
+temp
+go.sum
+dev
