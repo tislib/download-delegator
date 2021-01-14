@@ -30,3 +30,4 @@ node_modules
 temp
 go.sum
 dev
+/download-delegator
