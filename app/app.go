@@ -113,18 +113,17 @@ func (app *App) get(w http.ResponseWriter, r *http.Request) uint64 {
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 
-	select {
-	case <-r.Context().Done():
+	go func() {
+		<-r.Context().Done()
 		log.Print("event on handler 1")
 		cancel()
-		break
-	case <-ctx.Done():
+	}()
+
+	go func() {
+		<-ctx.Done()
 		log.Print("event on handler 2")
 		r.Body.Close()
-		break
-	default:
-		log.Print("event on handler default")
-	}
+	}()
 
 	req, err := http.NewRequestWithContext(ctx, "GET", urlParam, nil)
 
