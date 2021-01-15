@@ -15,6 +15,7 @@ import (
 	_ "net/http/pprof"
 	"net/url"
 	"os"
+	"time"
 )
 
 type App struct {
@@ -105,6 +106,7 @@ func (app *App) get(w http.ResponseWriter, r *http.Request) uint64 {
 	}
 
 	client := new(http.Client)
+	client.Timeout = time.Second * 100
 
 	app.configureProxy(client)
 
