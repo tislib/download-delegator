@@ -114,6 +114,8 @@ func (app *App) get(w http.ResponseWriter, r *http.Request) uint64 {
 	select {
 	case <-r.Context().Done():
 		cancel()
+	case <-ctx.Done():
+		r.Body.Close()
 	default:
 	}
 
