@@ -115,13 +115,11 @@ func (app *App) get(w http.ResponseWriter, r *http.Request) uint64 {
 
 	go func() {
 		<-r.Context().Done()
-		log.Print("event on handler 1")
 		cancel()
 	}()
 
 	go func() {
 		<-ctx.Done()
-		log.Print("event on handler 2")
 		r.Body.Close()
 	}()
 

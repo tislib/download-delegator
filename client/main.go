@@ -39,7 +39,7 @@ func main() {
 			sem.Release(1)
 		}()
 
-		time.Sleep(1 * time.Millisecond)
+		time.Sleep(100 * time.Millisecond)
 	}
 
 }
