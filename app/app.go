@@ -2,6 +2,7 @@ package app
 
 import (
 	"compress/gzip"
+	"context"
 	"crypto/tls"
 	"download-delegator/model"
 	"encoding/base64"
@@ -107,7 +108,16 @@ func (app *App) get(w http.ResponseWriter, r *http.Request) uint64 {
 
 	app.configureProxy(client)
 
-	req, err := http.NewRequest("GET", urlParam, nil)
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+
+	select {
+	case <-r.Context().Done():
+		cancel()
+	default:
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "GET", urlParam, nil)
 
 	if err != nil {
 		log.Print("request creation error", err)

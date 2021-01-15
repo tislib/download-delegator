@@ -4,7 +4,9 @@ import (
 	"crypto/tls"
 	"download-delegator/app"
 	"golang.org/x/net/http2"
+	"io"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -41,6 +43,10 @@ func runC(client *http.Client, timeCalcO *app.TimeCalc, timeCalcE *app.TimeCalc)
 	}
 
 	defer resp.Body.Close()
+
+	buf := new(strings.Builder)
+	io.Copy(buf, resp.Body)
+	//log.Print(n)
 
 	if resp.StatusCode == 200 {
 		timeCalcO.Step()
