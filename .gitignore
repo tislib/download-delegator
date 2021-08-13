@@ -31,3 +31,4 @@ temp
 go.sum
 dev
 /download-delegator
+proxy.conf

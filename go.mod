@@ -3,7 +3,8 @@ module download-delegator
 go 1.16
 
 require (
-	golang.org/x/net v0.0.0-20200202094626-16171245cfb2
+	github.com/microcosm-cc/bluemonday v1.0.15
+	github.com/yosssi/gohtml v0.0.0-20201013000340-ee4748c638f4
+	golang.org/x/net v0.0.0-20210614182718-04defd469f4e
 	golang.org/x/sync v0.0.0-20201207232520-09787c993a3a
-	golang.org/x/text v0.3.3 // indirect
 )
