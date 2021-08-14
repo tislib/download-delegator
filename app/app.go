@@ -221,7 +221,7 @@ func (app *App) getCleanInner(w http.ResponseWriter, r *http.Request, err error,
 
 	resp, err := client.Do(req)
 
-	if resp.StatusCode == 407 && strings.HasPrefix(urlParam, "http://") {
+	if resp != nil && resp.StatusCode == 407 && strings.HasPrefix(urlParam, "http://") {
 		urlParam = strings.ReplaceAll(urlParam, "http://", "https://")
 		return app.getCleanInner(w, r, err, urlParam, gzw)
 	}
