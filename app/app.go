@@ -18,6 +18,7 @@ import (
 	_ "net/http/pprof"
 	"net/url"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -84,6 +85,9 @@ func (app *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		status := app.get(w, r)
 		log.Print("result: ", r.RequestURI, " ", r.RemoteAddr, " ", status)
 	case "GET /get-clean":
+		status := app.getClean(w, r)
+		log.Print("result: ", r.RequestURI, " ", r.RemoteAddr, " ", status)
+	case "GET /get-clean-no-proxy":
 		status := app.getClean(w, r)
 		log.Print("result: ", r.RequestURI, " ", r.RemoteAddr, " ", status)
 	}
@@ -185,6 +189,10 @@ func (app *App) getClean(w http.ResponseWriter, r *http.Request) uint64 {
 		return 404
 	}
 
+	return app.getCleanInner(w, r, err, urlParam, gzw)
+}
+
+func (app *App) getCleanInner(w http.ResponseWriter, r *http.Request, err error, urlParam string, gzw *gzip.Writer) uint64 {
 	client := new(http.Client)
 	client.Timeout = time.Second * 100
 
@@ -212,6 +220,11 @@ func (app *App) getClean(w http.ResponseWriter, r *http.Request) uint64 {
 	}
 
 	resp, err := client.Do(req)
+
+	if resp.StatusCode == 407 && strings.HasPrefix(urlParam, "http://") {
+		urlParam = strings.ReplaceAll(urlParam, "http://", "https://")
+		return app.getCleanInner(w, r, err, urlParam, gzw)
+	}
 
 	if err != nil {
 		log.Print("request execution error", err)
