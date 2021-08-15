@@ -110,6 +110,7 @@ func (app *App) get(w http.ResponseWriter, r *http.Request) uint64 {
 	}
 
 	urlParam := query.Get("url")
+	noProxy := query.Get("noProxy") == "true"
 
 	if urlParam == "" {
 		w.WriteHeader(404)
@@ -120,7 +121,9 @@ func (app *App) get(w http.ResponseWriter, r *http.Request) uint64 {
 	client := new(http.Client)
 	client.Timeout = time.Second * 100
 
-	app.configureProxy(client)
+	if !noProxy {
+		app.configureProxy(client)
+	}
 
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
