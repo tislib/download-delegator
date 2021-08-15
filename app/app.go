@@ -123,6 +123,8 @@ func (app *App) get(w http.ResponseWriter, r *http.Request) uint64 {
 
 	if !noProxy {
 		app.configureProxy(client)
+	} else {
+		app.configureNoProxy(client)
 	}
 
 	ctx := context.Background()
@@ -199,6 +201,8 @@ func (app *App) getCleanInner(w http.ResponseWriter, r *http.Request, err error,
 
 	if !noProxy {
 		app.configureProxy(client)
+	} else {
+		app.configureNoProxy(client)
 	}
 
 	ctx := context.Background()
@@ -278,6 +282,12 @@ func (app *App) configureProxy(client *http.Client) {
 		ProxyConnectHeader: map[string][]string{
 			"Proxy-Authorization": append([]string{}, basicAuth),
 		},
+	}
+}
+
+func (app *App) configureNoProxy(client *http.Client) {
+	client.Transport = &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
 }
 
