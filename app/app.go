@@ -246,6 +246,11 @@ func (app *App) getCleanInner(w http.ResponseWriter, r *http.Request, err error,
 
 	body, err := ioutil.ReadAll(resp.Body)
 
+	if len(body) == 0 {
+		w.WriteHeader(400)
+		return 400
+	}
+
 	//gzw.Write(body)
 	//gzw.Write(gohtml.FormatBytes(body))
 	gzw.Write(gohtml.FormatBytes(app.sanitizer.SanitizeBytes(gohtml.FormatBytes(body))))
