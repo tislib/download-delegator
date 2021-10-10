@@ -141,6 +141,13 @@ func (app *App) bulk(w http.ResponseWriter, r *http.Request) int {
 				<-maxConcurrencySemaphore
 			}()
 
+			select {
+			case <-r.Context().Done():
+				return
+			default:
+
+			}
+
 			log.Print("begin bulk download index/url: ", index, item)
 
 			downloadConfig := model.DownloadConfig{

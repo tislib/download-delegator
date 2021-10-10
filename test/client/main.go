@@ -8,6 +8,8 @@ import (
 	"flag"
 	"log"
 	"net/http"
+	"os"
+	"strings"
 	"time"
 )
 
@@ -20,22 +22,26 @@ func main() {
 
 	bulkDownload := new(model.BulkDownloadConfig)
 
-	bulkDownload.MaxConcurrency = 1000
+	bulkDownload.MaxConcurrency = 250
 	bulkDownload.Sanitize = model.SanitizeConfig{CleanMinimal2: true}
 	bulkDownload.OutputForm = model.JsonOutput
-	bulkDownload.Timeout = time.Second * 10
+	bulkDownload.Timeout = time.Second * 100
 
-	N := 100000
+	N := 1000
 
-	for i := 0; i < N; i++ {
-		bulkDownload.Url = append(bulkDownload.Url, "https://static.tisserv.net/")
+	data, _ := os.ReadFile("/Users/taleh/Downloads/domains/domains.sample.text")
+
+	dataStr := string(data)
+
+	for _, domain := range strings.Split(dataStr, "\n") {
+		bulkDownload.Url = append(bulkDownload.Url, "http://"+domain)
 	}
 
 	beginTime := time.Now()
 
 	m, b := bulkDownload, new(bytes.Buffer)
 	json.NewEncoder(b).Encode(m)
-	r, e := http.NewRequest("POST", "https://ug.tisserv.net:8234/bulk", b)
+	r, e := http.NewRequest("POST", "https://127.0.0.1:8234/bulk", b)
 	if e != nil {
 		panic(e)
 	}

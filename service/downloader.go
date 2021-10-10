@@ -121,6 +121,12 @@ func (s *downloaderService) configureTransport(transport *http.Transport) *http.
 }
 
 func (s *downloaderService) Get(w io.Writer, ctx context.Context, config model.DownloadConfig) (int, *model.DownloadError, error) {
+	select {
+	case <-ctx.Done(): //context cancelled
+		return 0, nil, nil
+	default:
+	}
+
 	if config.Compress {
 		gzipWriter := gzip.NewWriter(w)
 
