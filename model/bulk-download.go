@@ -9,12 +9,13 @@ const (
 )
 
 type BulkDownloadConfig struct {
-	Url        []string
-	Compress   bool
-	Proxy      bool
-	Timeout    time.Duration
-	Sanitize   SanitizeConfig
-	OutputForm OutputForm
+	Url            []string
+	Compress       bool
+	Proxy          bool
+	Timeout        time.Duration
+	Sanitize       SanitizeConfig
+	OutputForm     OutputForm
+	MaxConcurrency int
 }
 
 type DownloadResponse struct {
@@ -22,6 +23,7 @@ type DownloadResponse struct {
 	Content       string
 	StatusCode    int
 	Duration      time.Duration
+	DurationMS    int
 	DownloadError *DownloadError
 	Index         int
 }

@@ -125,12 +125,20 @@ func (app *App) bulk(w http.ResponseWriter, r *http.Request) int {
 	wg := new(sync.WaitGroup)
 	mutex := new(sync.Mutex)
 
+	if config.MaxConcurrency == 0 {
+		config.MaxConcurrency = 100
+	}
+
+	var maxConcurrencySemaphore = make(chan int, config.MaxConcurrency)
+
 	for indexX, itemX := range config.Url {
 		wg.Add(1)
+		maxConcurrencySemaphore <- 1
 
 		go func(index int, item string) {
 			defer func() {
 				wg.Done()
+				<-maxConcurrencySemaphore
 			}()
 
 			downloadConfig := model.DownloadConfig{
@@ -143,7 +151,11 @@ func (app *App) bulk(w http.ResponseWriter, r *http.Request) int {
 
 			var buf bytes.Buffer
 
+			beginTime := time.Now()
+
 			statusCode, downloadErr, err := service.DownloaderServiceInstance.Get(&buf, r.Context(), downloadConfig)
+
+			duration := time.Now().Sub(beginTime)
 
 			resItem := model.DownloadResponse{
 				Url:           item,
@@ -151,6 +163,8 @@ func (app *App) bulk(w http.ResponseWriter, r *http.Request) int {
 				StatusCode:    statusCode,
 				Content:       buf.String(),
 				DownloadError: downloadErr,
+				Duration:      duration,
+				DurationMS:    int(duration / time.Millisecond),
 			}
 
 			mutex.Lock()

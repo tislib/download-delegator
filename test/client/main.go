@@ -1,15 +1,15 @@
 package main
 
 import (
+	"bytes"
 	"crypto/tls"
-	"crypto/x509"
+	"download-delegator/model"
+	"encoding/json"
 	"flag"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
-
-	"golang.org/x/net/http2"
+	"time"
 )
 
 const url = "https://localhost:8000"
@@ -17,40 +17,42 @@ const url = "https://localhost:8000"
 var httpVersion = flag.Int("version", 2, "HTTP version")
 
 func main() {
-	flag.Parse()
-	client := &http.Client{}
+	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 
-	// Create a pool with the server certificate since it is not signed by a known CA
-	caCert, err := ioutil.ReadFile("server.crt")
-	if err != nil {
-		log.Fatalf("Reading server certificate: %s", err)
-	}
-	caCertPool := x509.NewCertPool()
-	caCertPool.AppendCertsFromPEM(caCert)
+	bulkDownload := new(model.BulkDownloadConfig)
 
-	// Create TLS configuration with the certificate of the server
-	tlsConfig := &tls.Config{
-		RootCAs:            caCertPool,
-		InsecureSkipVerify: true,
+	bulkDownload.MaxConcurrency = 500
+	bulkDownload.Sanitize = model.SanitizeConfig{CleanMinimal2: true}
+	bulkDownload.OutputForm = model.JsonOutput
+	bulkDownload.Timeout = time.Second * 100
+
+	N := 1000
+
+	for i := 0; i < N; i++ {
+		bulkDownload.Url = append(bulkDownload.Url, "https://static.tisserv.net/")
 	}
 
-	// Use the proper transport in the client
-	switch *httpVersion {
-	case 1:
-		client.Transport = &http.Transport{TLSClientConfig: tlsConfig}
-	case 2:
-		client.Transport = &http2.Transport{TLSClientConfig: tlsConfig}
+	beginTime := time.Now()
+
+	m, b := bulkDownload, new(bytes.Buffer)
+	json.NewEncoder(b).Encode(m)
+	r, e := http.NewRequest("POST", "https://127.0.0.1:8234/bulk", b)
+	if e != nil {
+		panic(e)
 	}
 
-	// Perform the request
-	resp, err := client.Get(url)
-	if err != nil {
-		log.Fatalf("Failed get: %s", err)
+	resp, e := new(http.Client).Do(r)
+
+	duration := time.Now().Sub(beginTime)
+
+	if e != nil {
+		log.Panic(e)
 	}
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		log.Fatalf("Failed reading response body: %s", err)
-	}
-	fmt.Printf("Got response %d: %s %s\n", resp.StatusCode, resp.Proto, string(body))
+
+	data, err := ioutil.ReadAll(resp.Body)
+
+	log.Println(string(data), err)
+
+	log.Println("duration: ", duration)
+	log.Println("rps: ", int(duration/time.Millisecond)/N)
 }
