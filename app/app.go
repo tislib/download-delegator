@@ -103,6 +103,9 @@ func (app *App) test(w http.ResponseWriter, r *http.Request) {
 func (app *App) bulk(w http.ResponseWriter, r *http.Request) int {
 	defer r.Body.Close()
 
+	timeCalc := new(TimeCalc)
+	timeCalc.Init("bulk-download")
+
 	var config model.BulkDownloadConfig
 
 	err := json.NewDecoder(r.Body).Decode(&config)
@@ -163,6 +166,7 @@ func (app *App) bulk(w http.ResponseWriter, r *http.Request) int {
 			beginTime := time.Now()
 
 			statusCode, downloadErr, err := service.DownloaderServiceInstance.Get(&buf, r.Context(), downloadConfig)
+			timeCalc.Step()
 
 			duration := time.Now().Sub(beginTime)
 

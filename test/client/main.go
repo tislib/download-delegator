@@ -41,7 +41,7 @@ func main() {
 
 	m, b := bulkDownload, new(bytes.Buffer)
 	json.NewEncoder(b).Encode(m)
-	r, e := http.NewRequest("POST", "https://127.0.0.1:8234/bulk", b)
+	r, e := http.NewRequest("POST", "https://ug.tisserv.net:8234/bulk", b)
 	if e != nil {
 		panic(e)
 	}
