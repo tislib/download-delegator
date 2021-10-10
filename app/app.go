@@ -246,9 +246,6 @@ func (app *App) get(w http.ResponseWriter, r *http.Request, useBody bool) int {
 
 func (app *App) parseConfig(query url.Values, err error) model.DownloadConfig {
 	urlParam := query.Get("url")
-	proxy := query.Get("proxy") == "true"
-	compress := query.Get("compress") == "true"
-	cleanMinimal := query.Get("cleanMinimal") == "true"
 
 	timeout, err := strconv.Atoi(query.Get("timeout"))
 	if err != nil {
@@ -257,11 +254,12 @@ func (app *App) parseConfig(query url.Values, err error) model.DownloadConfig {
 
 	config := model.DownloadConfig{
 		Url:      urlParam,
-		Proxy:    proxy,
+		Proxy:    query.Get("proxy") == "true",
 		Timeout:  time.Duration(timeout) * time.Millisecond,
-		Compress: compress,
+		Compress: query.Get("compress") == "true",
 		Sanitize: model.SanitizeConfig{
-			CleanMinimal: cleanMinimal,
+			CleanMinimal:  query.Get("cleanMinimal") == "true",
+			CleanMinimal2: query.Get("cleanMinimal2") == "true",
 		},
 	}
 	return config

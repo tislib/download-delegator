@@ -11,5 +11,6 @@ type DownloadConfig struct {
 }
 
 type SanitizeConfig struct {
-	CleanMinimal bool
+	CleanMinimal  bool
+	CleanMinimal2 bool
 }

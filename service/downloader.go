@@ -22,9 +22,10 @@ import (
 )
 
 type downloaderService struct {
-	ProxyFile string
-	proxyList []model.ProxyItemConfig
-	sanitizer *bluemonday.Policy
+	ProxyFile  string
+	proxyList  []model.ProxyItemConfig
+	sanitizer  *bluemonday.Policy
+	sanitizer2 *bluemonday.Policy
 }
 
 func (s *downloaderService) ConfigureSanitizer() {
@@ -40,6 +41,13 @@ func (s *downloaderService) ConfigureSanitizer() {
 	s.sanitizer.AllowElements("meta", "a", "html", "head", "body", "title")
 	s.sanitizer.AllowLists()
 	s.sanitizer.AllowTables()
+
+	s.sanitizer2 = bluemonday.NewPolicy()
+
+	// We only allow <p> and <a href="">
+	s.sanitizer2.AllowAttrs("name", "content", "property").OnElements("meta")
+	s.sanitizer2.AllowElements("meta", "html", "head", "title")
+	s.sanitizer2.SkipElementsContent("body")
 }
 
 func (s *downloaderService) loadProxyConfig() {
@@ -175,7 +183,7 @@ func (s *downloaderService) Get(w io.Writer, ctx context.Context, config model.D
 
 	defer resp.Body.Close()
 
-	if config.Sanitize.CleanMinimal {
+	if config.Sanitize.CleanMinimal || config.Sanitize.CleanMinimal2 {
 		body, err := ioutil.ReadAll(resp.Body)
 
 		if err != nil {
@@ -186,7 +194,11 @@ func (s *downloaderService) Get(w io.Writer, ctx context.Context, config model.D
 			}, err
 		}
 
-		_, err = w.Write(gohtml.FormatBytes(s.sanitizer.SanitizeBytes(gohtml.FormatBytes(body))))
+		if config.Sanitize.CleanMinimal {
+			_, err = w.Write(gohtml.FormatBytes(s.sanitizer.SanitizeBytes(gohtml.FormatBytes(body))))
+		} else if config.Sanitize.CleanMinimal2 {
+			_, err = w.Write(gohtml.FormatBytes(s.sanitizer2.SanitizeBytes(gohtml.FormatBytes(body))))
+		}
 
 		if err != nil {
 			return resp.StatusCode, &model.DownloadError{
