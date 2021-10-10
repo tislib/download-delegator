@@ -141,6 +141,8 @@ func (app *App) bulk(w http.ResponseWriter, r *http.Request) int {
 				<-maxConcurrencySemaphore
 			}()
 
+			log.Print("begin bulk download index/url: ", index, item)
+
 			downloadConfig := model.DownloadConfig{
 				Url:      item,
 				Compress: false,
@@ -166,6 +168,8 @@ func (app *App) bulk(w http.ResponseWriter, r *http.Request) int {
 				Duration:      duration,
 				DurationMS:    int(duration / time.Millisecond),
 			}
+
+			log.Print("end bulk download index/url: ", index, item, statusCode, len(resItem.Content), int(duration/time.Millisecond))
 
 			mutex.Lock()
 			result = append(result, resItem)

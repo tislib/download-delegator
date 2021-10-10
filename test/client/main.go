@@ -6,7 +6,6 @@ import (
 	"download-delegator/model"
 	"encoding/json"
 	"flag"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"time"
@@ -21,12 +20,12 @@ func main() {
 
 	bulkDownload := new(model.BulkDownloadConfig)
 
-	bulkDownload.MaxConcurrency = 500
+	bulkDownload.MaxConcurrency = 1000
 	bulkDownload.Sanitize = model.SanitizeConfig{CleanMinimal2: true}
 	bulkDownload.OutputForm = model.JsonOutput
-	bulkDownload.Timeout = time.Second * 100
+	bulkDownload.Timeout = time.Second * 10
 
-	N := 1000
+	N := 100000
 
 	for i := 0; i < N; i++ {
 		bulkDownload.Url = append(bulkDownload.Url, "https://static.tisserv.net/")
@@ -36,12 +35,12 @@ func main() {
 
 	m, b := bulkDownload, new(bytes.Buffer)
 	json.NewEncoder(b).Encode(m)
-	r, e := http.NewRequest("POST", "https://127.0.0.1:8234/bulk", b)
+	r, e := http.NewRequest("POST", "https://ug.tisserv.net:8234/bulk", b)
 	if e != nil {
 		panic(e)
 	}
 
-	resp, e := new(http.Client).Do(r)
+	_, e = new(http.Client).Do(r)
 
 	duration := time.Now().Sub(beginTime)
 
@@ -49,10 +48,10 @@ func main() {
 		log.Panic(e)
 	}
 
-	data, err := ioutil.ReadAll(resp.Body)
+	//data, err := ioutil.ReadAll(resp.Body)
 
-	log.Println(string(data), err)
+	//log.Println(string(data), err)
 
 	log.Println("duration: ", duration)
-	log.Println("rps: ", int(duration/time.Millisecond)/N)
+	log.Println("rps: ", int(time.Second)/(int(duration)/N))
 }
