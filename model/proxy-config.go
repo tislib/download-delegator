@@ -1,6 +1,6 @@
 package model
 
-type ProxyConfig struct {
+type ProxyItemConfig struct {
 	Host     string
 	Port     string
 	Username string

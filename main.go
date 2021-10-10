@@ -2,17 +2,30 @@ package main
 
 import (
 	appPackage "download-delegator/app"
+	"download-delegator/model"
+	"github.com/BurntSushi/toml"
+	"log"
 	"os"
 )
 
 func main() {
+	configFile, err := os.ReadFile(os.Args[1])
+
+	if err != nil {
+		log.Panicln(err)
+	}
+
+	var config model.Config
+
+	_, err = toml.Decode(string(configFile), &config)
+
+	if err != nil {
+		log.Panicln(err)
+	}
+
 	app := new(appPackage.App)
 
-	app.Addr = ":8234"
-
-	app.CertFile = os.Args[1]
-	app.KeyFile = os.Args[2]
-	app.ProxyFile = os.Args[3]
+	app.Init(config)
 
 	app.Run()
 }

@@ -1,0 +1,9 @@
+[concurrency]
+MaxConcurrency=1000
+[tls]
+cert = "/server.crt"
+key = "/server.key"
+[listen]
+addr = ":8234"
+[proxy]
+file="/proxy.conf"

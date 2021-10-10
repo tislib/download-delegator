@@ -5,5 +5,7 @@ COPY download-delegator /
 COPY server.crt /
 COPY server.key /
 
+COPY container.config.toml /config.toml
+
 # Command to run
-ENTRYPOINT ["/download-delegator", "/server.crt", "/server.key", "/proxy.conf"]
+ENTRYPOINT ["/download-delegator", "/config.toml"]

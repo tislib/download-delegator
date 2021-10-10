@@ -1,75 +1,75 @@
 package app
 
 import (
-	"compress/gzip"
-	"context"
-	"crypto/tls"
+	"bytes"
 	"download-delegator/model"
-	"encoding/base64"
-	"encoding/csv"
-	"fmt"
-	"github.com/microcosm-cc/bluemonday"
-	"github.com/yosssi/gohtml"
-	"io"
-	"io/ioutil"
+	"download-delegator/service"
+	"encoding/json"
 	"log"
-	"math/rand"
+	"net"
 	"net/http"
 	_ "net/http/pprof"
 	"net/url"
-	"os"
-	"strings"
+	"strconv"
+	"sync"
 	"time"
 )
 
 type App struct {
-	Addr      string
-	CertFile  string
-	KeyFile   string
-	ProxyFile string
-
-	proxyList []model.ProxyConfig
-	sanitizer *bluemonday.Policy
+	srv    *http.Server
+	Async  bool
+	config model.Config
+	Addr   string
 }
 
-func (app *App) loadProxyConfig() {
-	csvFile, err := os.Open(app.ProxyFile)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	defer csvFile.Close()
+func (app *App) Init(config model.Config) {
+	app.config = config
 
-	csvLines, err := csv.NewReader(csvFile).ReadAll()
-	if err != nil {
-		fmt.Println(err)
-	}
-	for _, line := range csvLines {
-		proxyConfig := model.ProxyConfig{
-			Host:     line[0],
-			Port:     line[1],
-			Username: line[2],
-			Password: line[3],
-		}
-
-		app.proxyList = append(app.proxyList, proxyConfig)
-	}
-
-	log.Printf("Proxies loaded: %d proxy", len(app.proxyList))
+	app.Addr = config.Listen.Addr
 }
 
 func (app *App) Run() {
-	app.loadProxyConfig()
+	app.srv = &http.Server{Addr: app.config.Listen.Addr, Handler: app}
 
-	app.configureSanitizer()
+	service.DownloaderServiceInstance.ProxyFile = app.config.Proxy.File
+
+	service.DownloaderServiceInstance.ConfigureSanitizer()
 
 	app.startListening()
 }
 
+func (app *App) ListenAndServeAsync() {
+	srv := app.srv
+	addr := srv.Addr
+	if addr == "" {
+		addr = ":https"
+	}
+	ln, err := net.Listen("tcp", addr)
+	if err != nil {
+		log.Panic(err)
+	}
+	app.Addr = ln.Addr().String()
+
+	if app.Async {
+		go func() {
+			log.Fatal(srv.ServeTLS(ln, app.config.Tls.Cert, app.config.Tls.Key))
+		}()
+	} else {
+		log.Fatal(srv.ServeTLS(ln, app.config.Tls.Cert, app.config.Tls.Key))
+	}
+}
+
 func (app *App) startListening() {
-	srv := &http.Server{Addr: app.Addr, Handler: app}
 	log.Printf("Serving on " + app.Addr)
-	log.Fatal(srv.ListenAndServeTLS(app.CertFile, app.KeyFile))
+	app.ListenAndServeAsync()
+}
+
+func (app *App) GetAddr() string {
+	return app.Addr
+}
+
+func (app *App) Close() error {
+	return app.srv.Close()
 }
 
 func (app *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -82,240 +82,203 @@ func (app *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		app.test(w, r)
 		break
 	case "GET /get":
-		status := app.get(w, r)
+		status := app.get(w, r, false)
 		log.Print("result: ", r.RequestURI, " ", r.RemoteAddr, " ", status)
-	case "GET /get-clean":
-		status := app.getClean(w, r)
+	case "POST /get":
+		status := app.get(w, r, true)
+		log.Print("result: ", r.RequestURI, " ", r.RemoteAddr, " ", status)
+	case "POST /bulk":
+		status := app.bulk(w, r)
 		log.Print("result: ", r.RequestURI, " ", r.RemoteAddr, " ", status)
 	}
 }
 
 func (app *App) test(w http.ResponseWriter, r *http.Request) {
-	defer r.Body.Close()
+	//time.Sleep(100 * time.Second)
+	w.WriteHeader(404)
 
-	w.Write([]byte(r.RequestURI))
+	w.Write([]byte("hello world"))
 }
 
-func (app *App) get(w http.ResponseWriter, r *http.Request) uint64 {
+func (app *App) bulk(w http.ResponseWriter, r *http.Request) int {
 	defer r.Body.Close()
-	gzw := gzip.NewWriter(w)
 
-	query, err := url.ParseQuery(r.URL.RawQuery)
+	var config model.BulkDownloadConfig
 
-	if err != nil {
-		w.WriteHeader(400)
-		w.Write([]byte(err.Error()))
-		log.Print("url parse error: ", err)
-		return 500
-	}
-
-	urlParam := query.Get("url")
-	noProxy := query.Get("noProxy") == "true"
-
-	if urlParam == "" {
-		w.WriteHeader(404)
-		w.Write([]byte("invalid url"))
-		return 404
-	}
-
-	client := new(http.Client)
-	client.Timeout = time.Second * 100
-
-	if !noProxy {
-		app.configureProxy(client)
-	} else {
-		app.configureNoProxy(client)
-	}
-
-	ctx := context.Background()
-	ctx, cancel := context.WithCancel(ctx)
-
-	go func() {
-		<-r.Context().Done()
-		cancel()
-	}()
-
-	go func() {
-		<-ctx.Done()
-		r.Body.Close()
-	}()
-
-	req, err := http.NewRequestWithContext(ctx, "GET", urlParam, nil)
+	err := json.NewDecoder(r.Body).Decode(&config)
 
 	if err != nil {
-		log.Print("request creation error", err)
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(400)
+
+		writeDownloadError(w, err, &model.DownloadError{
+			ErrorState:   model.RequestBodyNotValid,
+			ErrorText:    err.Error(),
+			ClientStatus: 0,
+		})
+
 		return 400
 	}
 
-	resp, err := client.Do(req)
+	var result []model.DownloadResponse
 
-	if err != nil {
-		log.Print("request execution error", err)
-		w.WriteHeader(500)
-		return 500
+	wg := new(sync.WaitGroup)
+	mutex := new(sync.Mutex)
+
+	for indexX, itemX := range config.Url {
+		wg.Add(1)
+
+		go func(index int, item string) {
+			defer func() {
+				wg.Done()
+			}()
+
+			downloadConfig := model.DownloadConfig{
+				Url:      item,
+				Compress: false,
+				Sanitize: config.Sanitize,
+				Proxy:    config.Proxy,
+				Timeout:  config.Timeout,
+			}
+
+			var buf bytes.Buffer
+
+			statusCode, downloadErr, err := service.DownloaderServiceInstance.Get(&buf, r.Context(), downloadConfig)
+
+			resItem := model.DownloadResponse{
+				Url:           item,
+				Index:         index,
+				StatusCode:    statusCode,
+				Content:       buf.String(),
+				DownloadError: downloadErr,
+			}
+
+			mutex.Lock()
+			result = append(result, resItem)
+			mutex.Unlock()
+
+			if err != nil {
+				log.Print(err)
+			}
+		}(indexX, itemX)
 	}
 
-	defer resp.Body.Close()
-	defer gzw.Close()
+	wg.Wait()
 
-	w.Header().Set("Content-Encoding", "gzip")
-	_, err = io.CopyN(gzw, resp.Body, 1024*1024*1024)
+	if config.OutputForm == "" || config.OutputForm == model.JsonOutput {
+		w.Header().Set("Content-Type", "application/json")
 
-	if err != nil && err != io.EOF {
-		log.Print("io error", err)
-		w.WriteHeader(500)
-		return 500
+		data, err := json.Marshal(result)
+
+		if err != nil {
+			log.Print(err)
+		}
+
+		_, err = w.Write(data)
+
+		if err != nil {
+			log.Print(err)
+		}
 	}
 
-	return 200
-}
-func (app *App) getClean(w http.ResponseWriter, r *http.Request) uint64 {
-	defer r.Body.Close()
-	gzw := gzip.NewWriter(w)
-
-	query, err := url.ParseQuery(r.URL.RawQuery)
-
-	if err != nil {
-		w.WriteHeader(400)
-		w.Write([]byte(err.Error()))
-		log.Print("url parse error: ", err)
-		return 500
-	}
-
-	urlParam := query.Get("url")
-	noProxy := query.Get("noProxy") == "true"
-
-	if urlParam == "" {
-		w.WriteHeader(404)
-		w.Write([]byte("invalid url"))
-		return 404
-	}
-
-	return app.getCleanInner(w, r, err, urlParam, gzw, noProxy)
-}
-
-func (app *App) getCleanInner(w http.ResponseWriter, r *http.Request, err error, urlParam string, gzw *gzip.Writer, noProxy bool) uint64 {
-	client := new(http.Client)
-	client.Timeout = time.Second * 100
-
-	if !noProxy {
-		app.configureProxy(client)
-	} else {
-		app.configureNoProxy(client)
-	}
-
-	ctx := context.Background()
-	ctx, cancel := context.WithCancel(ctx)
-
-	go func() {
-		<-r.Context().Done()
-		cancel()
-	}()
-
-	go func() {
-		<-ctx.Done()
-		r.Body.Close()
-	}()
-
-	req, err := http.NewRequestWithContext(ctx, "GET", urlParam, nil)
-
-	if err != nil {
-		log.Print("request creation error", err)
-		w.WriteHeader(400)
-		return 400
-	}
-
-	resp, err := client.Do(req)
-
-	if resp != nil && resp.StatusCode == 407 && strings.HasPrefix(urlParam, "http://") {
-		urlParam = strings.ReplaceAll(urlParam, "http://", "https://")
-		return app.getCleanInner(w, r, err, urlParam, gzw, false)
-	}
-
-	if err != nil {
-		log.Print("request execution error", err)
-		w.WriteHeader(500)
-		return 500
-	}
-
-	defer resp.Body.Close()
-	defer gzw.Close()
-
-	w.Header().Set("Content-Encoding", "gzip")
-
-	body, err := ioutil.ReadAll(resp.Body)
-
-	if len(body) == 0 {
-		w.WriteHeader(400)
-		return 400
-	}
-
-	//gzw.Write(body)
-	//gzw.Write(gohtml.FormatBytes(body))
-	gzw.Write(gohtml.FormatBytes(app.sanitizer.SanitizeBytes(gohtml.FormatBytes(body))))
-
-	if err != nil && err != io.EOF {
-		log.Print("io error", err)
-		w.WriteHeader(500)
-		return 500
+	if config.Compress {
+		w.Header().Set("Content-Encoding", "gzip")
 	}
 
 	return 200
 }
 
-func (app *App) configureProxy(client *http.Client) {
-	proxyConfig := app.locateRandomProxy()
+func (app *App) get(w http.ResponseWriter, r *http.Request, useBody bool) int {
+	defer r.Body.Close()
 
-	if proxyConfig == nil {
-		return
+	var config model.DownloadConfig
+	if !useBody {
+		query, err := url.ParseQuery(r.URL.RawQuery)
+
+		if err != nil {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(400)
+
+			writeDownloadError(w, err, &model.DownloadError{
+				ErrorState:   model.UrlNotValid,
+				ErrorText:    err.Error(),
+				ClientStatus: 0,
+			})
+
+			return 400
+		}
+
+		config = app.parseConfig(query, err)
+	} else {
+		err := json.NewDecoder(r.Body).Decode(&config)
+
+		if err != nil {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(400)
+
+			writeDownloadError(w, err, &model.DownloadError{
+				ErrorState:   model.RequestBodyNotValid,
+				ErrorText:    err.Error(),
+				ClientStatus: 0,
+			})
+
+			return 400
+		}
 	}
 
-	proxyUrl, err := url.Parse("http://" + proxyConfig.Host + ":" + proxyConfig.Port)
+	statusCode, downloadErr, err := service.DownloaderServiceInstance.Get(w, r.Context(), config)
+
+	if downloadErr != nil || err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(400)
+
+		writeDownloadError(w, err, downloadErr)
+
+		return 400
+	}
+
+	if config.Compress {
+		w.Header().Set("Content-Encoding", "gzip")
+	}
+
+	return statusCode
+}
+
+func (app *App) parseConfig(query url.Values, err error) model.DownloadConfig {
+	urlParam := query.Get("url")
+	proxy := query.Get("proxy") == "true"
+	compress := query.Get("compress") == "true"
+	cleanMinimal := query.Get("cleanMinimal") == "true"
+
+	timeout, err := strconv.Atoi(query.Get("timeout"))
+	if err != nil {
+		timeout = 5000
+	}
+
+	config := model.DownloadConfig{
+		Url:      urlParam,
+		Proxy:    proxy,
+		Timeout:  time.Duration(timeout) * time.Millisecond,
+		Compress: compress,
+		Sanitize: model.SanitizeConfig{
+			CleanMinimal: cleanMinimal,
+		},
+	}
+	return config
+}
+
+func writeDownloadError(w http.ResponseWriter, err error, downloadError *model.DownloadError) {
+	log.Print(err)
+
+	bytes, err := json.Marshal(downloadError)
 
 	if err != nil {
 		log.Print(err)
-		return
 	}
 
-	auth := proxyConfig.Username + ":" + proxyConfig.Password
-	basicAuth := "Basic " + base64.StdEncoding.EncodeToString([]byte(auth))
+	_, err = w.Write(bytes)
 
-	client.Transport = &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-		Proxy:           http.ProxyURL(proxyUrl),
-		ProxyConnectHeader: map[string][]string{
-			"Proxy-Authorization": append([]string{}, basicAuth),
-		},
+	if err != nil {
+		log.Print(err)
 	}
-}
-
-func (app *App) configureNoProxy(client *http.Client) {
-	client.Transport = &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-	}
-}
-
-func (app *App) locateRandomProxy() *model.ProxyConfig {
-	if len(app.proxyList) > 0 {
-		randomIndex := rand.Intn(len(app.proxyList))
-		return &app.proxyList[randomIndex]
-	}
-
-	return nil
-}
-
-func (app *App) configureSanitizer() {
-	app.sanitizer = bluemonday.NewPolicy()
-
-	// Require URLs to be parseable by net/url.Parse and either:
-	//   mailto: http:// or https://
-	app.sanitizer.AllowStandardURLs()
-
-	// We only allow <p> and <a href="">
-	app.sanitizer.AllowAttrs("href").OnElements("a")
-	app.sanitizer.AllowAttrs("name", "content", "property").OnElements("meta")
-	app.sanitizer.AllowElements("meta", "a", "html", "head", "body", "title")
-	app.sanitizer.AllowLists()
-	app.sanitizer.AllowTables()
 }
