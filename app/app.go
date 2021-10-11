@@ -123,16 +123,20 @@ func (app *App) bulk(w http.ResponseWriter, r *http.Request) int {
 		return 400
 	}
 
-	var result []model.DownloadResponse
-
 	wg := new(sync.WaitGroup)
-	mutex := new(sync.Mutex)
 
 	if config.MaxConcurrency == 0 {
 		config.MaxConcurrency = 100
 	}
 
 	var maxConcurrencySemaphore = make(chan int, config.MaxConcurrency)
+
+	resultChan := make(chan model.DownloadResponse, config.MaxConcurrency*2)
+
+	go func() {
+		wg.Wait()
+		close(resultChan)
+	}()
 
 	for indexX, itemX := range config.Url {
 		wg.Add(1)
@@ -192,10 +196,7 @@ func (app *App) bulk(w http.ResponseWriter, r *http.Request) int {
 			}
 
 			timeCalc.Step()
-
-			mutex.Lock()
-			result = append(result, resItem)
-			mutex.Unlock()
+			resultChan <- resItem
 
 			if err != nil {
 				log.Print(err)
@@ -203,22 +204,33 @@ func (app *App) bulk(w http.ResponseWriter, r *http.Request) int {
 		}(indexX, itemX)
 	}
 
-	wg.Wait()
-
 	if config.OutputForm == "" || config.OutputForm == model.JsonOutput {
 		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte("["))
+		isFirst := true
 
-		data, err := json.Marshal(result)
+		for item := range resultChan {
+			data, err := json.Marshal(item)
 
-		if err != nil {
-			log.Print(err)
+			if err != nil {
+				log.Print(err)
+			}
+
+			if !isFirst {
+				w.Write([]byte(",\n"))
+			}
+
+			_, err = w.Write(data)
+
+			if err != nil {
+				log.Print(err)
+			}
+
+			isFirst = false
 		}
 
-		_, err = w.Write(data)
+		w.Write([]byte("]"))
 
-		if err != nil {
-			log.Print(err)
-		}
 	}
 
 	if config.Compress {

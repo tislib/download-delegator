@@ -32,7 +32,7 @@ func main() {
 		RequestTimeout:      time.Second * 10,
 	}
 
-	N := 1000
+	N := 3
 
 	data, _ := os.ReadFile("/Users/taleh/Downloads/domains/domains100k.sample.text")
 
@@ -67,7 +67,11 @@ func main() {
 
 	var response []model.DownloadResponse
 
-	json.NewDecoder(resp.Body).Decode(&response)
+	err := json.NewDecoder(resp.Body).Decode(&response)
+
+	if err != nil {
+		log.Panic(err)
+	}
 
 	var downloadErrorStats = make(map[model.DownloadErrorState]int)
 
@@ -79,6 +83,8 @@ func main() {
 			downloadErrorStats["ok"]++
 		}
 	}
+
+	log.Print(response)
 
 	log.Println("duration: ", duration)
 	log.Println("rps: ", int(time.Second)/(int(duration)/N))
