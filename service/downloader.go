@@ -184,6 +184,8 @@ func (s *downloaderService) Get(w io.Writer, ctx context.Context, config model.D
 	resp, err := client.Do(req)
 
 	if err != nil {
+		log.Print(err)
+
 		err = unwrapErrorRecursive(err)
 
 		if timeoutError, ok := err.(net.Error); ok && timeoutError.Timeout() {
