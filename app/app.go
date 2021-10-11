@@ -282,9 +282,11 @@ func (app *App) parseConfig(query url.Values, err error) model.DownloadConfig {
 	}
 
 	config := model.DownloadConfig{
-		Url:      urlParam,
-		Proxy:    query.Get("proxy") == "true",
-		Timeout:  time.Duration(timeout) * time.Millisecond,
+		Url:   urlParam,
+		Proxy: query.Get("proxy") == "true",
+		Timeout: model.TimeoutConfig{
+			RequestTimeout: time.Duration(timeout) * time.Millisecond,
+		},
 		Compress: query.Get("compress") == "true",
 		Sanitize: model.SanitizeConfig{
 			CleanMinimal:  query.Get("cleanMinimal") == "true",

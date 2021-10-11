@@ -12,7 +12,7 @@ type BulkDownloadConfig struct {
 	Url            []string
 	Compress       bool
 	Proxy          bool
-	Timeout        time.Duration
+	Timeout        TimeoutConfig
 	Sanitize       SanitizeConfig
 	OutputForm     OutputForm
 	MaxConcurrency int
