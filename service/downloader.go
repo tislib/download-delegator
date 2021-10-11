@@ -15,6 +15,7 @@ import (
 	"io/ioutil"
 	"log"
 	"math/rand"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -85,7 +86,7 @@ func (s *downloaderService) locateRandomProxy() *model.ProxyItemConfig {
 	return nil
 }
 
-func (s *downloaderService) configureProxy(client *http.Client) {
+func (s *downloaderService) configureProxy(client *http.Client, config model.DownloadConfig) {
 	ProxyItemConfig := s.locateRandomProxy()
 
 	if ProxyItemConfig == nil {
@@ -107,15 +108,21 @@ func (s *downloaderService) configureProxy(client *http.Client) {
 		ProxyConnectHeader: map[string][]string{
 			"Proxy-Authorization": append([]string{}, basicAuth),
 		},
-	})
+	}, config)
 }
 
-func (s *downloaderService) configureTransport(transport *http.Transport) *http.Transport {
-	transport.TLSHandshakeTimeout = 1 * time.Second
+func (s *downloaderService) configureTransport(transport *http.Transport, config model.DownloadConfig) *http.Transport {
+	transport.TLSHandshakeTimeout = config.Timeout.TLSHandshakeTimeout
 	transport.ExpectContinueTimeout = 1 * time.Second
-	transport.ResponseHeaderTimeout = 10 * time.Second
 	transport.MaxIdleConns = 0
-	transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+	transport.TLSClientConfig = &tls.Config{
+		InsecureSkipVerify: true,
+	}
+
+	transport.DialContext = (&net.Dialer{
+		Timeout:   config.Timeout.DialTimeout,
+		KeepAlive: -1,
+	}).DialContext
 
 	return transport
 }
@@ -124,7 +131,9 @@ func (s *downloaderService) Get(w io.Writer, ctx context.Context, config model.D
 	select {
 	case <-ctx.Done(): //context cancelled
 		return 0, nil, nil
+	//case <-time.After(100 * time.Second): //timeout
 	default:
+
 	}
 
 	if config.Compress {
@@ -152,12 +161,12 @@ func (s *downloaderService) Get(w io.Writer, ctx context.Context, config model.D
 	}
 
 	client := new(http.Client)
-	client.Timeout = config.Timeout
+	client.Timeout = config.Timeout.RequestTimeout
 
 	if config.Proxy {
-		s.configureProxy(client)
+		s.configureProxy(client, config)
 	} else {
-		client.Transport = s.configureTransport(&http.Transport{})
+		client.Transport = s.configureTransport(&http.Transport{}, config)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, "GET", config.Url, nil)
