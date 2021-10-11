@@ -225,6 +225,8 @@ func (s *downloaderService) Get(w io.Writer, ctx context.Context, config model.D
 			}, err
 		}
 
+		log.Print("client error: ", err)
+
 		return 0, &model.DownloadError{
 			ErrorState:   model.InternalHttpClientError,
 			ErrorText:    err.Error(),
