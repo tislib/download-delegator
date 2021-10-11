@@ -19,6 +19,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"syscall"
 	"time"
 )
 
@@ -183,6 +184,47 @@ func (s *downloaderService) Get(w io.Writer, ctx context.Context, config model.D
 	resp, err := client.Do(req)
 
 	if err != nil {
+		err = unwrapErrorRecursive(err)
+
+		if timeoutError, ok := err.(net.Error); ok && timeoutError.Timeout() {
+			return 0, &model.DownloadError{
+				ErrorState:   model.Timeout,
+				ErrorText:    err.Error(),
+				ClientStatus: 0,
+			}, err
+		}
+
+		if dnsError, ok := err.(*net.DNSError); ok && dnsError.Timeout() {
+			return 0, &model.DownloadError{
+				ErrorState:   model.DnsTimeout,
+				ErrorText:    err.Error(),
+				ClientStatus: 0,
+			}, err
+		}
+
+		if dnsError, ok := err.(*net.DNSError); ok && !dnsError.Timeout() {
+			return 0, &model.DownloadError{
+				ErrorState:   model.DnsNotResolved,
+				ErrorText:    err.Error(),
+				ClientStatus: 0,
+			}, err
+		}
+
+		if sysCallError, ok := err.(syscall.Errno); ok {
+			if sysCallError == syscall.ECONNREFUSED {
+				return 0, &model.DownloadError{
+					ErrorState:   model.ConnectionRefused,
+					ErrorText:    err.Error(),
+					ClientStatus: 0,
+				}, err
+			}
+			return 0, &model.DownloadError{
+				ErrorState:   model.SysCallGenericError,
+				ErrorText:    err.Error(),
+				ClientStatus: 0,
+			}, err
+		}
+
 		return 0, &model.DownloadError{
 			ErrorState:   model.InternalHttpClientError,
 			ErrorText:    err.Error(),
@@ -234,7 +276,25 @@ func (s *downloaderService) Get(w io.Writer, ctx context.Context, config model.D
 		}, err
 	}
 
+	if resp.StatusCode >= 400 {
+		return 0, &model.DownloadError{
+			ErrorState:   model.ClientNotSuccess,
+			ErrorText:    "client is not success",
+			ClientStatus: resp.StatusCode,
+		}, err
+	}
+
 	return resp.StatusCode, nil, nil
+}
+
+func unwrapErrorRecursive(err error) error {
+	newErr := errors.Unwrap(err)
+
+	if newErr != nil {
+		return unwrapErrorRecursive(newErr)
+	}
+
+	return err
 }
 
 var DownloaderServiceInstance = new(downloaderService)

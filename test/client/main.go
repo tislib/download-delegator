@@ -22,10 +22,14 @@ func main() {
 
 	bulkDownload := new(model.BulkDownloadConfig)
 
-	bulkDownload.MaxConcurrency = 250
+	bulkDownload.MaxConcurrency = 1000
 	bulkDownload.Sanitize = model.SanitizeConfig{CleanMinimal2: true}
 	bulkDownload.OutputForm = model.JsonOutput
-	bulkDownload.Timeout = time.Second * 10
+	bulkDownload.Timeout = model.TimeoutConfig{
+		TLSHandshakeTimeout: time.Second * 2,
+		DialTimeout:         time.Second * 2,
+		RequestTimeout:      time.Second * 2,
+	}
 
 	N := 1000
 
@@ -47,7 +51,7 @@ func main() {
 
 	m, b := bulkDownload, new(bytes.Buffer)
 	json.NewEncoder(b).Encode(m)
-	r, e := http.NewRequest("POST", "https://ug.tisserv.net:8234/bulk", b)
+	r, e := http.NewRequest("POST", "https://127.0.0.1:8234/bulk", b)
 	if e != nil {
 		panic(e)
 	}
