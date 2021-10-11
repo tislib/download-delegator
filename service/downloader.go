@@ -184,56 +184,7 @@ func (s *downloaderService) Get(w io.Writer, ctx context.Context, config model.D
 	resp, err := client.Do(req)
 
 	if err != nil {
-		log.Print(err)
-
-		err = unwrapErrorRecursive(err)
-
-		if timeoutError, ok := err.(net.Error); ok && timeoutError.Timeout() {
-			return 0, &model.DownloadError{
-				ErrorState:   model.Timeout,
-				ErrorText:    err.Error(),
-				ClientStatus: 0,
-			}, err
-		}
-
-		if dnsError, ok := err.(*net.DNSError); ok && dnsError.Timeout() {
-			return 0, &model.DownloadError{
-				ErrorState:   model.DnsTimeout,
-				ErrorText:    err.Error(),
-				ClientStatus: 0,
-			}, err
-		}
-
-		if dnsError, ok := err.(*net.DNSError); ok && !dnsError.Timeout() {
-			return 0, &model.DownloadError{
-				ErrorState:   model.DnsNotResolved,
-				ErrorText:    err.Error(),
-				ClientStatus: 0,
-			}, err
-		}
-
-		if sysCallError, ok := err.(syscall.Errno); ok {
-			if sysCallError == syscall.ECONNREFUSED {
-				return 0, &model.DownloadError{
-					ErrorState:   model.ConnectionRefused,
-					ErrorText:    err.Error(),
-					ClientStatus: 0,
-				}, err
-			}
-			return 0, &model.DownloadError{
-				ErrorState:   model.SysCallGenericError,
-				ErrorText:    err.Error(),
-				ClientStatus: 0,
-			}, err
-		}
-
-		log.Print("client error: ", err)
-
-		return 0, &model.DownloadError{
-			ErrorState:   model.InternalHttpClientError,
-			ErrorText:    err.Error(),
-			ClientStatus: 0,
-		}, err
+		return s.handleClientError(err)
 	}
 
 	headerWriter, isHeaderWriter := w.(http.ResponseWriter)
@@ -289,6 +240,59 @@ func (s *downloaderService) Get(w io.Writer, ctx context.Context, config model.D
 	}
 
 	return resp.StatusCode, nil, nil
+}
+
+func (s *downloaderService) handleClientError(err error) (int, *model.DownloadError, error) {
+	log.Print(err)
+
+	err = unwrapErrorRecursive(err)
+
+	if timeoutError, ok := err.(net.Error); ok && timeoutError.Timeout() {
+		return 0, &model.DownloadError{
+			ErrorState:   model.Timeout,
+			ErrorText:    err.Error(),
+			ClientStatus: 0,
+		}, err
+	}
+
+	if dnsError, ok := err.(*net.DNSError); ok && dnsError.Timeout() {
+		return 0, &model.DownloadError{
+			ErrorState:   model.DnsTimeout,
+			ErrorText:    err.Error(),
+			ClientStatus: 0,
+		}, err
+	}
+
+	if dnsError, ok := err.(*net.DNSError); ok && !dnsError.Timeout() {
+		return 0, &model.DownloadError{
+			ErrorState:   model.DnsNotResolved,
+			ErrorText:    err.Error(),
+			ClientStatus: 0,
+		}, err
+	}
+
+	if sysCallError, ok := err.(syscall.Errno); ok {
+		if sysCallError == syscall.ECONNREFUSED {
+			return 0, &model.DownloadError{
+				ErrorState:   model.ConnectionRefused,
+				ErrorText:    err.Error(),
+				ClientStatus: 0,
+			}, err
+		}
+		return 0, &model.DownloadError{
+			ErrorState:   model.SysCallGenericError,
+			ErrorText:    err.Error(),
+			ClientStatus: 0,
+		}, err
+	}
+
+	log.Print("client error: ", err)
+
+	return 0, &model.DownloadError{
+		ErrorState:   model.InternalHttpClientError,
+		ErrorText:    err.Error(),
+		ClientStatus: 0,
+	}, err
 }
 
 func unwrapErrorRecursive(err error) error {

@@ -165,22 +165,33 @@ func (app *App) bulk(w http.ResponseWriter, r *http.Request) int {
 
 			beginTime := time.Now()
 
-			statusCode, downloadErr, err := service.DownloaderServiceInstance.Get(&buf, r.Context(), downloadConfig)
-			timeCalc.Step()
+			var resItem model.DownloadResponse
 
-			duration := time.Now().Sub(beginTime)
+			for i := 0; i < config.RetryCount; i++ {
+				statusCode, downloadErr, err := service.DownloaderServiceInstance.Get(&buf, r.Context(), downloadConfig)
 
-			resItem := model.DownloadResponse{
-				Url:           item,
-				Index:         index,
-				StatusCode:    statusCode,
-				Content:       buf.String(),
-				DownloadError: downloadErr,
-				Duration:      duration,
-				DurationMS:    int(duration / time.Millisecond),
+				duration := time.Now().Sub(beginTime)
+
+				localResItem := model.DownloadResponse{
+					Url:           item,
+					Index:         index,
+					StatusCode:    statusCode,
+					Content:       buf.String(),
+					DownloadError: downloadErr,
+					Duration:      duration,
+					Retried:       i,
+					DurationMS:    int(duration / time.Millisecond),
+				}
+
+				resItem = localResItem
+
+				if err != nil {
+					log.Print("end bulk download index/url: ", index, item, statusCode, len(resItem.Content), int(duration/time.Millisecond))
+					break
+				}
 			}
 
-			log.Print("end bulk download index/url: ", index, item, statusCode, len(resItem.Content), int(duration/time.Millisecond))
+			timeCalc.Step()
 
 			mutex.Lock()
 			result = append(result, resItem)

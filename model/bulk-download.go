@@ -16,6 +16,7 @@ type BulkDownloadConfig struct {
 	Sanitize       SanitizeConfig
 	OutputForm     OutputForm
 	MaxConcurrency int
+	RetryCount     int
 }
 
 type DownloadResponse struct {
@@ -26,4 +27,5 @@ type DownloadResponse struct {
 	DurationMS    int
 	DownloadError *DownloadError
 	Index         int
+	Retried       int
 }
