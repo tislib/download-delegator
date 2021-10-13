@@ -7,6 +7,7 @@ const (
 	RequestBodyNotValid     DownloadErrorState = "request-body-not-valid"
 	InternalError           DownloadErrorState = "internal-error"
 	InternalHttpClientError DownloadErrorState = "internal-http-client-error"
+	DialTimeout             DownloadErrorState = "dial-timeout"
 	Timeout                 DownloadErrorState = "timeout"
 	SanitizerError          DownloadErrorState = "sanitize-error"
 	DnsNotResolved                             = "dns-not-resolved"

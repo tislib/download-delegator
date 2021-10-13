@@ -18,6 +18,8 @@ const url = "https://localhost:8000"
 var httpVersion = flag.Int("version", 2, "HTTP version")
 
 func main() {
+	log.Print(int64(time.Second))
+
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 
 	bulkDownload := new(model.BulkDownloadConfig)
@@ -27,12 +29,12 @@ func main() {
 	bulkDownload.OutputForm = model.JsonOutput
 	bulkDownload.RetryCount = 10
 	bulkDownload.Timeout = model.TimeoutConfig{
-		TLSHandshakeTimeout: time.Second * 10,
-		DialTimeout:         time.Second * 10,
+		TLSHandshakeTimeout: time.Second * 3,
+		DialTimeout:         time.Second * 3,
 		RequestTimeout:      time.Second * 10,
 	}
 
-	N := 3
+	N := 10000
 
 	data, _ := os.ReadFile("/Users/taleh/Downloads/domains/domains100k.sample.text")
 

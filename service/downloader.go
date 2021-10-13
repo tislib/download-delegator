@@ -19,6 +19,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
 	"syscall"
 	"time"
 )
@@ -246,6 +247,22 @@ func (s *downloaderService) handleClientError(err error) (int, *model.DownloadEr
 	log.Print(err)
 
 	err = unwrapErrorRecursive(err)
+
+	if timeoutError, ok := err.(net.Error); ok && timeoutError.Timeout() {
+		if strings.Contains(err.Error(), "dial tcp") {
+			return 0, &model.DownloadError{
+				ErrorState:   model.DialTimeout,
+				ErrorText:    err.Error(),
+				ClientStatus: 0,
+			}, err
+		} else {
+			return 0, &model.DownloadError{
+				ErrorState:   model.Timeout,
+				ErrorText:    err.Error(),
+				ClientStatus: 0,
+			}, err
+		}
+	}
 
 	if timeoutError, ok := err.(net.Error); ok && timeoutError.Timeout() {
 		return 0, &model.DownloadError{
