@@ -9,6 +9,7 @@ const (
 	InternalHttpClientError DownloadErrorState = "internal-http-client-error"
 	DialTimeout             DownloadErrorState = "dial-timeout"
 	Timeout                 DownloadErrorState = "timeout"
+	TlsTimeout              DownloadErrorState = "tls-timeout"
 	SanitizerError          DownloadErrorState = "sanitize-error"
 	DnsNotResolved                             = "dns-not-resolved"
 	ConnectionRefused                          = "connection-refused"

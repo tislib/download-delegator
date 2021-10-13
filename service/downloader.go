@@ -255,6 +255,12 @@ func (s *downloaderService) handleClientError(err error) (int, *model.DownloadEr
 				ErrorText:    err.Error(),
 				ClientStatus: 0,
 			}, err
+		} else if strings.Contains(err.Error(), "TLS handshake timeout") {
+			return 0, &model.DownloadError{
+				ErrorState:   model.TlsTimeout,
+				ErrorText:    err.Error(),
+				ClientStatus: 0,
+			}, err
 		} else {
 			return 0, &model.DownloadError{
 				ErrorState:   model.Timeout,
