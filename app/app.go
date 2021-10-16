@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -42,7 +43,7 @@ func (app *App) ListenAndServeAsync() {
 	srv := app.srv
 	addr := srv.Addr
 	if addr == "" {
-		addr = ":https"
+		addr = ":http"
 	}
 	ln, err := net.Listen("tcp", addr)
 	if err != nil {
@@ -52,10 +53,10 @@ func (app *App) ListenAndServeAsync() {
 
 	if app.Async {
 		go func() {
-			log.Fatal(srv.ServeTLS(ln, app.config.Tls.Cert, app.config.Tls.Key))
+			log.Fatal(srv.Serve(ln))
 		}()
 	} else {
-		log.Fatal(srv.ServeTLS(ln, app.config.Tls.Cert, app.config.Tls.Key))
+		log.Fatal(srv.Serve(ln))
 	}
 }
 
@@ -110,6 +111,8 @@ func (app *App) bulk(w http.ResponseWriter, r *http.Request) int {
 
 	err := json.NewDecoder(r.Body).Decode(&config)
 
+	log.Print(config)
+
 	if err != nil {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(400)
@@ -134,75 +137,86 @@ func (app *App) bulk(w http.ResponseWriter, r *http.Request) int {
 	resultChan := make(chan model.DownloadResponse, config.MaxConcurrency*2)
 
 	go func() {
+		var counter int32
+		for indexX, itemX := range config.Url {
+			wg.Add(1)
+			maxConcurrencySemaphore <- 1
+
+			go func(index int, item string) {
+				atomic.AddInt32(&counter, 1)
+
+				defer func() {
+					atomic.AddInt32(&counter, -1)
+					log.Print("concurrency level: ", strconv.Itoa(int(counter)))
+
+					if err := recover(); err != nil {
+						log.Print(err)
+					}
+					wg.Done()
+					<-maxConcurrencySemaphore
+				}()
+
+				select {
+				case <-r.Context().Done():
+					return
+				default:
+
+				}
+
+				log.Print("["+(strconv.Itoa(len(config.Url)))+"/"+strconv.Itoa(index)+"]"+"begin bulk download index/url: ", index, item)
+
+				downloadConfig := model.DownloadConfig{
+					Url:      item,
+					Compress: false,
+					Sanitize: config.Sanitize,
+					Proxy:    config.Proxy,
+					Timeout:  config.Timeout,
+				}
+
+				var buf bytes.Buffer
+
+				beginTime := time.Now()
+
+				var resItem model.DownloadResponse
+
+				for i := 0; i < config.RetryCount; i++ {
+					statusCode, downloadErr, err := service.DownloaderServiceInstance.Get(&buf, r.Context(), downloadConfig)
+
+					duration := time.Now().Sub(beginTime)
+
+					localResItem := model.DownloadResponse{
+						Url:           item,
+						Index:         index,
+						StatusCode:    statusCode,
+						Content:       buf.String(),
+						DownloadError: downloadErr,
+						Duration:      duration,
+						Retried:       i,
+						DurationMS:    int(duration / time.Millisecond),
+					}
+
+					resItem = localResItem
+
+					if err != nil {
+						log.Print("["+(strconv.Itoa(len(config.Url)))+"/"+strconv.Itoa(index)+"]"+"end bulk download index/url: ", index, item, statusCode, len(resItem.Content), int(duration/time.Millisecond))
+						break
+					}
+				}
+
+				timeCalc.Step()
+				log.Print("sending to chan", counter)
+				resultChan <- resItem
+				log.Print("sent to chan", counter)
+
+				if err != nil {
+					log.Print(err)
+				}
+			}(indexX, itemX)
+		}
+
 		wg.Wait()
 		close(resultChan)
 	}()
-
-	for indexX, itemX := range config.Url {
-		wg.Add(1)
-		maxConcurrencySemaphore <- 1
-
-		go func(index int, item string) {
-			defer func() {
-				wg.Done()
-				<-maxConcurrencySemaphore
-			}()
-
-			select {
-			case <-r.Context().Done():
-				return
-			default:
-
-			}
-
-			log.Print("begin bulk download index/url: ", index, item)
-
-			downloadConfig := model.DownloadConfig{
-				Url:      item,
-				Compress: false,
-				Sanitize: config.Sanitize,
-				Proxy:    config.Proxy,
-				Timeout:  config.Timeout,
-			}
-
-			var buf bytes.Buffer
-
-			beginTime := time.Now()
-
-			var resItem model.DownloadResponse
-
-			for i := 0; i < config.RetryCount; i++ {
-				statusCode, downloadErr, err := service.DownloaderServiceInstance.Get(&buf, r.Context(), downloadConfig)
-
-				duration := time.Now().Sub(beginTime)
-
-				localResItem := model.DownloadResponse{
-					Url:           item,
-					Index:         index,
-					StatusCode:    statusCode,
-					Content:       buf.String(),
-					DownloadError: downloadErr,
-					Duration:      duration,
-					Retried:       i,
-					DurationMS:    int(duration / time.Millisecond),
-				}
-
-				resItem = localResItem
-
-				if err != nil {
-					log.Print("end bulk download index/url: ", index, item, statusCode, len(resItem.Content), int(duration/time.Millisecond))
-					break
-				}
-			}
-
-			timeCalc.Step()
-			resultChan <- resItem
-
-			if err != nil {
-				log.Print(err)
-			}
-		}(indexX, itemX)
-	}
 
 	if config.OutputForm == "" || config.OutputForm == model.JsonOutput {
 		w.Header().Set("Content-Type", "application/json")
@@ -210,6 +224,7 @@ func (app *App) bulk(w http.ResponseWriter, r *http.Request) int {
 		isFirst := true
 
 		for item := range resultChan {
+			log.Print("begin write for", item.Url)
 			data, err := json.Marshal(item)
 
 			if err != nil {
@@ -227,6 +242,7 @@ func (app *App) bulk(w http.ResponseWriter, r *http.Request) int {
 			}
 
 			isFirst = false
+			log.Print("end write", item.Url)
 		}
 
 		w.Write([]byte("]"))

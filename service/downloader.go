@@ -164,6 +164,9 @@ func (s *downloaderService) Get(w io.Writer, ctx context.Context, config model.D
 
 	client := new(http.Client)
 	client.Timeout = config.Timeout.RequestTimeout
+	defer func() {
+		client.CloseIdleConnections()
+	}()
 
 	if config.Proxy {
 		s.configureProxy(client, config)
