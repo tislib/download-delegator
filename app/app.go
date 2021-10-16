@@ -8,19 +8,21 @@ import (
 	"log"
 	"net"
 	"net/http"
-	_ "net/http/pprof"
+	pprof "net/http/pprof"
 	"net/url"
 	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 )
 
 type App struct {
-	srv    *http.Server
-	Async  bool
-	config model.Config
-	Addr   string
+	srv          *http.Server
+	Async        bool
+	config       model.Config
+	Addr         string
+	pprofHandler http.Handler
 }
 
 func (app *App) Init(config model.Config) {
@@ -35,6 +37,8 @@ func (app *App) Run() {
 	service.DownloaderServiceInstance.ProxyFile = app.config.Proxy.File
 
 	service.DownloaderServiceInstance.ConfigureSanitizer()
+
+	app.pprofHandler = pprof.Handler("pprof")
 
 	app.startListening()
 }
@@ -77,6 +81,14 @@ func (app *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	action := r.Method + " " + r.URL.Path
 
 	log.Print("download: ", r.RequestURI, " ", r.RemoteAddr)
+
+	if strings.HasPrefix(action, "GET /pprof") {
+		app.pprofHandler.ServeHTTP(w, r)
+	}
+
+	if strings.HasPrefix(action, "POST /pprof") {
+		app.pprofHandler.ServeHTTP(w, r)
+	}
 
 	switch action {
 	case "GET /test":
