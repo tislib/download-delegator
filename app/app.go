@@ -103,7 +103,10 @@ func (app *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		status := app.get(w, r, true)
 		log.Print("result: ", r.RequestURI, " ", r.RemoteAddr, " ", status)
 	case "POST /bulk":
-		status := app.bulk(w, r)
+		status := app.bulkDownload(w, r)
+		log.Print("result: ", r.RequestURI, " ", r.RemoteAddr, " ", status)
+	case "POST /whois":
+		status := app.bulkWhois(w, r)
 		log.Print("result: ", r.RequestURI, " ", r.RemoteAddr, " ", status)
 	}
 }
@@ -115,7 +118,7 @@ func (app *App) test(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("hello world"))
 }
 
-func (app *App) bulk(w http.ResponseWriter, r *http.Request) int {
+func (app *App) bulkDownload(w http.ResponseWriter, r *http.Request) int {
 	defer r.Body.Close()
 
 	timeCalc := new(TimeCalc)
@@ -131,10 +134,9 @@ func (app *App) bulk(w http.ResponseWriter, r *http.Request) int {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(400)
 
-		writeDownloadError(w, err, &model.DownloadError{
-			ErrorState:   model.RequestBodyNotValid,
-			ErrorText:    err.Error(),
-			ClientStatus: 0,
+		writeDownloadError(w, err, &model.Error{
+			ErrorState: model.RequestBodyNotValid,
+			ErrorText:  err.Error(),
 		})
 
 		return 400
@@ -284,6 +286,146 @@ func (app *App) bulk(w http.ResponseWriter, r *http.Request) int {
 
 	return 200
 }
+func (app *App) bulkWhois(w http.ResponseWriter, r *http.Request) int {
+	defer r.Body.Close()
+
+	timeCalc := new(TimeCalc)
+	timeCalc.Init("bulk-whois")
+
+	var config model.BulkWhoisConfig
+
+	err := json.NewDecoder(r.Body).Decode(&config)
+
+	log.Print(config)
+
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(400)
+
+		writeDownloadError(w, err, &model.Error{
+			ErrorState: model.RequestBodyNotValid,
+			ErrorText:  err.Error(),
+		})
+
+		return 400
+	}
+
+	wg := new(sync.WaitGroup)
+
+	if config.MaxConcurrency == 0 {
+		config.MaxConcurrency = 100
+	}
+
+	var maxConcurrencySemaphore = make(chan int, config.MaxConcurrency)
+
+	resultChan := make(chan model.WhoisResponse, config.MaxConcurrency*2)
+
+	go func() {
+		var counter int32
+		for indexX, itemX := range config.Domains {
+			wg.Add(1)
+			maxConcurrencySemaphore <- 1
+
+			go func(index int, item string) {
+				atomic.AddInt32(&counter, 1)
+
+				defer func() {
+					atomic.AddInt32(&counter, -1)
+					log.Print("concurrency level: ", strconv.Itoa(int(counter)))
+
+					if err := recover(); err != nil {
+						log.Print(err)
+					}
+					wg.Done()
+					<-maxConcurrencySemaphore
+				}()
+
+				select {
+				case <-r.Context().Done():
+					return
+				default:
+
+				}
+
+				log.Print("["+(strconv.Itoa(len(config.Domains)))+"/"+strconv.Itoa(index)+"]"+"begin bulk download index/url: ", index, item)
+
+				var resItem model.WhoisResponse
+
+				for i := 0; i < config.RetryCount; i++ {
+					resItem = service.WhoisServiceInstance.Get(item, config.Timeout)
+
+					if resItem.Error == nil {
+						break
+					}
+				}
+
+				timeCalc.Step()
+				log.Print("sending to chan", counter)
+				resultChan <- resItem
+				log.Print("sent to chan", counter)
+
+				if err != nil {
+					log.Print(err)
+				}
+			}(indexX, itemX)
+		}
+
+		wg.Wait()
+		close(resultChan)
+	}()
+
+	var bodyWriter io.Writer = w
+
+	if config.Compress {
+		w.Header().Set("Content-Encoding", "application/gzip")
+
+		gzipWriter := gzip.NewWriter(w)
+
+		defer func() {
+			err := gzipWriter.Close()
+
+			if err != nil {
+				log.Print(err)
+			}
+		}()
+
+		bodyWriter = gzipWriter
+	}
+
+	if config.OutputForm == "" || config.OutputForm == model.JsonOutput {
+		w.Header().Set("Content-Type", "application/json")
+
+		bodyWriter.Write([]byte("["))
+		isFirst := true
+
+		for item := range resultChan {
+			log.Print("begin write for", item.Domain)
+			data, err := json.Marshal(item)
+
+			if err != nil {
+				log.Print(err)
+			}
+
+			if !isFirst {
+				bodyWriter.Write([]byte(",\n"))
+			}
+
+			_, err = bodyWriter.Write(data)
+
+			if err != nil {
+				log.Print(err)
+			}
+
+			isFirst = false
+			log.Print("end write", item.Domain)
+		}
+
+		bodyWriter.Write([]byte("]"))
+
+	}
+
+	return 200
+}
 
 func (app *App) get(w http.ResponseWriter, r *http.Request, useBody bool) int {
 	defer r.Body.Close()
@@ -296,10 +438,9 @@ func (app *App) get(w http.ResponseWriter, r *http.Request, useBody bool) int {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(400)
 
-			writeDownloadError(w, err, &model.DownloadError{
-				ErrorState:   model.UrlNotValid,
-				ErrorText:    err.Error(),
-				ClientStatus: 0,
+			writeDownloadError(w, err, &model.Error{
+				ErrorState: model.UrlNotValid,
+				ErrorText:  err.Error(),
 			})
 
 			return 400
@@ -313,10 +454,9 @@ func (app *App) get(w http.ResponseWriter, r *http.Request, useBody bool) int {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(400)
 
-			writeDownloadError(w, err, &model.DownloadError{
-				ErrorState:   model.RequestBodyNotValid,
-				ErrorText:    err.Error(),
-				ClientStatus: 0,
+			writeDownloadError(w, err, &model.Error{
+				ErrorState: model.RequestBodyNotValid,
+				ErrorText:  err.Error(),
 			})
 
 			return 400
@@ -364,9 +504,7 @@ func (app *App) parseConfig(query url.Values, err error) model.DownloadConfig {
 	return config
 }
 
-func writeDownloadError(w http.ResponseWriter, err error, downloadError *model.DownloadError) {
-	log.Print(err)
-
+func writeDownloadError(w http.ResponseWriter, err error, downloadError *model.Error) {
 	bytes, err := json.Marshal(downloadError)
 
 	if err != nil {

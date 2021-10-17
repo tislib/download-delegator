@@ -129,7 +129,7 @@ func (s *downloaderService) configureTransport(transport *http.Transport, config
 	return transport
 }
 
-func (s *downloaderService) Get(w io.Writer, ctx context.Context, config model.DownloadConfig) (int, *model.DownloadError, error) {
+func (s *downloaderService) Get(w io.Writer, ctx context.Context, config model.DownloadConfig) (int, *model.Error, error) {
 	select {
 	case <-ctx.Done(): //context cancelled
 		return 0, nil, nil
@@ -155,10 +155,9 @@ func (s *downloaderService) Get(w io.Writer, ctx context.Context, config model.D
 	if config.Url == "" {
 		err := errors.New("url must be not empty")
 
-		return 0, &model.DownloadError{
-			ErrorState:   model.UrlNotValid,
-			ErrorText:    err.Error(),
-			ClientStatus: 0,
+		return 0, &model.Error{
+			ErrorState: model.UrlNotValid,
+			ErrorText:  err.Error(),
 		}, err
 	}
 
@@ -178,10 +177,9 @@ func (s *downloaderService) Get(w io.Writer, ctx context.Context, config model.D
 
 	if err != nil {
 
-		return 0, &model.DownloadError{
-			ErrorState:   model.InternalError,
-			ErrorText:    err.Error(),
-			ClientStatus: 0,
+		return 0, &model.Error{
+			ErrorState: model.InternalError,
+			ErrorText:  err.Error(),
 		}, err
 	}
 
@@ -203,10 +201,9 @@ func (s *downloaderService) Get(w io.Writer, ctx context.Context, config model.D
 		body, err := ioutil.ReadAll(resp.Body)
 
 		if err != nil {
-			return resp.StatusCode, &model.DownloadError{
-				ErrorState:   model.InternalHttpClientError,
-				ErrorText:    err.Error(),
-				ClientStatus: resp.StatusCode,
+			return resp.StatusCode, &model.Error{
+				ErrorState: model.InternalHttpClientError,
+				ErrorText:  err.Error(),
 			}, err
 		}
 
@@ -217,10 +214,9 @@ func (s *downloaderService) Get(w io.Writer, ctx context.Context, config model.D
 		}
 
 		if err != nil {
-			return resp.StatusCode, &model.DownloadError{
-				ErrorState:   model.SanitizerError,
-				ErrorText:    err.Error(),
-				ClientStatus: resp.StatusCode,
+			return resp.StatusCode, &model.Error{
+				ErrorState: model.SanitizerError,
+				ErrorText:  err.Error(),
 			}, err
 		}
 	}
@@ -228,96 +224,85 @@ func (s *downloaderService) Get(w io.Writer, ctx context.Context, config model.D
 	_, err = io.CopyN(w, resp.Body, 1024*1024*1024)
 
 	if err != nil && err != io.EOF {
-		return resp.StatusCode, &model.DownloadError{
-			ErrorState:   model.InternalHttpClientError,
-			ErrorText:    err.Error(),
-			ClientStatus: resp.StatusCode,
+		return resp.StatusCode, &model.Error{
+			ErrorState: model.InternalHttpClientError,
+			ErrorText:  err.Error(),
 		}, err
 	}
 
 	if resp.StatusCode >= 400 {
-		return 0, &model.DownloadError{
-			ErrorState:   model.ClientNotSuccess,
-			ErrorText:    "client is not success",
-			ClientStatus: resp.StatusCode,
+		return resp.StatusCode, &model.Error{
+			ErrorState: model.ClientNotSuccess,
+			ErrorText:  "client is not success",
 		}, err
 	}
 
 	return resp.StatusCode, nil, nil
 }
 
-func (s *downloaderService) handleClientError(err error) (int, *model.DownloadError, error) {
+func (s *downloaderService) handleClientError(err error) (int, *model.Error, error) {
 	log.Print(err)
 
 	err = unwrapErrorRecursive(err)
 
 	if timeoutError, ok := err.(net.Error); ok && timeoutError.Timeout() {
 		if strings.Contains(err.Error(), "dial tcp") {
-			return 0, &model.DownloadError{
-				ErrorState:   model.DialTimeout,
-				ErrorText:    err.Error(),
-				ClientStatus: 0,
+			return 0, &model.Error{
+				ErrorState: model.DialTimeout,
+				ErrorText:  err.Error(),
 			}, err
 		} else if strings.Contains(err.Error(), "TLS handshake timeout") {
-			return 0, &model.DownloadError{
-				ErrorState:   model.TlsTimeout,
-				ErrorText:    err.Error(),
-				ClientStatus: 0,
+			return 0, &model.Error{
+				ErrorState: model.TlsTimeout,
+				ErrorText:  err.Error(),
 			}, err
 		} else {
-			return 0, &model.DownloadError{
-				ErrorState:   model.Timeout,
-				ErrorText:    err.Error(),
-				ClientStatus: 0,
+			return 0, &model.Error{
+				ErrorState: model.Timeout,
+				ErrorText:  err.Error(),
 			}, err
 		}
 	}
 
 	if timeoutError, ok := err.(net.Error); ok && timeoutError.Timeout() {
-		return 0, &model.DownloadError{
-			ErrorState:   model.Timeout,
-			ErrorText:    err.Error(),
-			ClientStatus: 0,
+		return 0, &model.Error{
+			ErrorState: model.Timeout,
+			ErrorText:  err.Error(),
 		}, err
 	}
 
 	if dnsError, ok := err.(*net.DNSError); ok && dnsError.Timeout() {
-		return 0, &model.DownloadError{
-			ErrorState:   model.DnsTimeout,
-			ErrorText:    err.Error(),
-			ClientStatus: 0,
+		return 0, &model.Error{
+			ErrorState: model.DnsTimeout,
+			ErrorText:  err.Error(),
 		}, err
 	}
 
 	if dnsError, ok := err.(*net.DNSError); ok && !dnsError.Timeout() {
-		return 0, &model.DownloadError{
-			ErrorState:   model.DnsNotResolved,
-			ErrorText:    err.Error(),
-			ClientStatus: 0,
+		return 0, &model.Error{
+			ErrorState: model.DnsNotResolved,
+			ErrorText:  err.Error(),
 		}, err
 	}
 
 	if sysCallError, ok := err.(syscall.Errno); ok {
 		if sysCallError == syscall.ECONNREFUSED {
-			return 0, &model.DownloadError{
-				ErrorState:   model.ConnectionRefused,
-				ErrorText:    err.Error(),
-				ClientStatus: 0,
+			return 0, &model.Error{
+				ErrorState: model.ConnectionRefused,
+				ErrorText:  err.Error(),
 			}, err
 		}
-		return 0, &model.DownloadError{
-			ErrorState:   model.SysCallGenericError,
-			ErrorText:    err.Error(),
-			ClientStatus: 0,
+		return 0, &model.Error{
+			ErrorState: model.SysCallGenericError,
+			ErrorText:  err.Error(),
 		}, err
 	}
 
 	log.Print("client error: ", err)
 
-	return 0, &model.DownloadError{
-		ErrorState:   model.InternalHttpClientError,
-		ErrorText:    err.Error(),
-		ClientStatus: 0,
+	return 0, &model.Error{
+		ErrorState: model.InternalHttpClientError,
+		ErrorText:  err.Error(),
 	}, err
 }
 

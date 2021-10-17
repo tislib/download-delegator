@@ -25,7 +25,7 @@ type DownloadResponse struct {
 	StatusCode    int
 	Duration      time.Duration
 	DurationMS    int
-	DownloadError *DownloadError
+	DownloadError *Error
 	Index         int
 	Retried       int
 }
