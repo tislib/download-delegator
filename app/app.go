@@ -2,6 +2,7 @@ package app
 
 import (
 	"bytes"
+	"compress/gzip"
 	"download-delegator/model"
 	"download-delegator/service"
 	"encoding/json"
@@ -230,9 +231,28 @@ func (app *App) bulk(w http.ResponseWriter, r *http.Request) int {
 		close(resultChan)
 	}()
 
+	bodyWriter := w
+
+	if config.Compress {
+		w.Header().Set("Content-Encoding", "application/gzip")
+
+		gzipWriter := gzip.NewWriter(w)
+
+		defer func() {
+			err := gzipWriter.Close()
+
+			if err != nil {
+				log.Print(err)
+			}
+		}()
+
+		w = bodyWriter
+	}
+
 	if config.OutputForm == "" || config.OutputForm == model.JsonOutput {
 		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte("["))
+
+		bodyWriter.Write([]byte("["))
 		isFirst := true
 
 		for item := range resultChan {
@@ -244,7 +264,7 @@ func (app *App) bulk(w http.ResponseWriter, r *http.Request) int {
 			}
 
 			if !isFirst {
-				w.Write([]byte(",\n"))
+				bodyWriter.Write([]byte(",\n"))
 			}
 
 			_, err = w.Write(data)
@@ -257,12 +277,8 @@ func (app *App) bulk(w http.ResponseWriter, r *http.Request) int {
 			log.Print("end write", item.Url)
 		}
 
-		w.Write([]byte("]"))
+		bodyWriter.Write([]byte("]"))
 
-	}
-
-	if config.Compress {
-		w.Header().Set("Content-Encoding", "gzip")
 	}
 
 	return 200
