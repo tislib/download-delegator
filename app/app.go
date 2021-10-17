@@ -6,6 +6,7 @@ import (
 	"download-delegator/model"
 	"download-delegator/service"
 	"encoding/json"
+	"io"
 	"log"
 	"net"
 	"net/http"
@@ -231,7 +232,7 @@ func (app *App) bulk(w http.ResponseWriter, r *http.Request) int {
 		close(resultChan)
 	}()
 
-	bodyWriter := w
+	var bodyWriter io.Writer = w
 
 	if config.Compress {
 		w.Header().Set("Content-Encoding", "application/gzip")
@@ -246,7 +247,7 @@ func (app *App) bulk(w http.ResponseWriter, r *http.Request) int {
 			}
 		}()
 
-		w = bodyWriter
+		bodyWriter = gzipWriter
 	}
 
 	if config.OutputForm == "" || config.OutputForm == model.JsonOutput {
