@@ -268,7 +268,7 @@ func (app *App) bulk(w http.ResponseWriter, r *http.Request) int {
 				bodyWriter.Write([]byte(",\n"))
 			}
 
-			_, err = w.Write(data)
+			_, err = bodyWriter.Write(data)
 
 			if err != nil {
 				log.Print(err)
