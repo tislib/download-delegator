@@ -239,7 +239,11 @@ func (app *App) bulkDownload(w http.ResponseWriter, r *http.Request) int {
 	if config.Compress {
 		w.Header().Set("Content-Encoding", "application/gzip")
 
-		gzipWriter := gzip.NewWriter(w)
+		gzipWriter, err := gzip.NewWriterLevel(w, gzip.BestCompression)
+
+		if err != nil {
+			log.Print(err)
+		}
 
 		defer func() {
 			err := gzipWriter.Close()
@@ -379,7 +383,11 @@ func (app *App) bulkWhois(w http.ResponseWriter, r *http.Request) int {
 	if config.Compress {
 		w.Header().Set("Content-Encoding", "application/gzip")
 
-		gzipWriter := gzip.NewWriter(w)
+		gzipWriter, err := gzip.NewWriterLevel(w, gzip.BestCompression)
+
+		if err != nil {
+			log.Print(err)
+		}
 
 		defer func() {
 			err := gzipWriter.Close()
