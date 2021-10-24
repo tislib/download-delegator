@@ -27,6 +27,7 @@ type App struct {
 	config       model.Config
 	Addr         string
 	pprofHandler http.Handler
+	Version      string
 }
 
 func (app *App) Init(config model.Config) {
@@ -98,6 +99,9 @@ func (app *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case "GET /test":
 		app.test(w, r)
 		break
+	case "GET /version":
+		status := app.version(w, r)
+		log.Print("result: ", r.RequestURI, " ", r.RemoteAddr, " ", status)
 	case "GET /get":
 		status := app.get(w, r, false)
 		log.Print("result: ", r.RequestURI, " ", r.RemoteAddr, " ", status)
@@ -526,6 +530,12 @@ func (app *App) parseConfig(query url.Values, err error) model.DownloadConfig {
 		},
 	}
 	return config
+}
+
+func (app *App) version(w http.ResponseWriter, r *http.Request) int {
+	w.Write([]byte(app.Version))
+
+	return 200
 }
 
 func writeDownloadError(w http.ResponseWriter, err error, downloadError *model.Error) {
