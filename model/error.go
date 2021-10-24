@@ -32,7 +32,6 @@ func (e ErrorState) Error() *Error {
 func (e ErrorState) ErrorWithMsg(msg string) *Error {
 	return &Error{
 		ErrorState: e,
-		ErrorText:  msg,
 	}
 }
 
@@ -43,15 +42,9 @@ func (e ErrorState) ErrorWithError(err error) *Error {
 
 	return &Error{
 		ErrorState: e,
-		ErrorText:  err.Error(),
 	}
 }
 
 type Error struct {
 	ErrorState ErrorState
-	ErrorText  string
-}
-
-func (e Error) String() string {
-	return e.ErrorText
 }

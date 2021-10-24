@@ -10,7 +10,7 @@ const (
 
 type BulkDownloadConfig struct {
 	Url            []string
-	Compress       bool
+	Compression    Compression
 	Proxy          bool
 	Timeout        TimeoutConfig
 	Sanitize       SanitizeConfig

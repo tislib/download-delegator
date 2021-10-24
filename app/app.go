@@ -6,6 +6,8 @@ import (
 	"download-delegator/model"
 	"download-delegator/service"
 	"encoding/json"
+	"github.com/dsnet/compress/bzip2"
+	"github.com/klauspost/compress/zstd"
 	"io"
 	"log"
 	"net"
@@ -134,9 +136,10 @@ func (app *App) bulkDownload(w http.ResponseWriter, r *http.Request) int {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(400)
 
+		log.Print(err)
+
 		writeDownloadError(w, err, &model.Error{
 			ErrorState: model.RequestBodyNotValid,
-			ErrorText:  err.Error(),
 		})
 
 		return 400
@@ -236,24 +239,17 @@ func (app *App) bulkDownload(w http.ResponseWriter, r *http.Request) int {
 
 	var bodyWriter io.Writer = w
 
-	if config.Compress {
-		w.Header().Set("Content-Encoding", "application/gzip")
-
-		gzipWriter, err := gzip.NewWriterLevel(w, gzip.BestCompression)
-
-		if err != nil {
-			log.Print(err)
-		}
+	if config.Compression.IsCompressionEnabled() {
+		writer := app.compress(w, config.Compression)
+		bodyWriter = writer
 
 		defer func() {
-			err := gzipWriter.Close()
+			err := writer.Close()
 
 			if err != nil {
 				log.Print(err)
 			}
 		}()
-
-		bodyWriter = gzipWriter
 	}
 
 	if config.OutputForm == "" || config.OutputForm == model.JsonOutput {
@@ -285,10 +281,34 @@ func (app *App) bulkDownload(w http.ResponseWriter, r *http.Request) int {
 		}
 
 		bodyWriter.Write([]byte("]"))
-
 	}
 
 	return 200
+}
+
+func (app *App) compress(w http.ResponseWriter, compression model.Compression) io.WriteCloser {
+	w.Header().Set("Content-Encoding", "application/gzip")
+
+	var writer io.WriteCloser
+	var err error
+
+	switch compression.Algo {
+	case model.Gzip:
+		writer, err = gzip.NewWriterLevel(w, compression.Level)
+		break
+	case model.Bzip2:
+		writer, err = bzip2.NewWriter(w, &bzip2.WriterConfig{Level: compression.Level})
+		break
+	case model.Zstd:
+		writer, err = zstd.NewWriter(w, zstd.WithEncoderLevel(zstd.EncoderLevelFromZstd(compression.Level)))
+		break
+	}
+
+	if err != nil {
+		log.Print(err)
+	}
+
+	return writer
 }
 func (app *App) bulkWhois(w http.ResponseWriter, r *http.Request) int {
 	defer r.Body.Close()
@@ -306,9 +326,10 @@ func (app *App) bulkWhois(w http.ResponseWriter, r *http.Request) int {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(400)
 
+		log.Println(err)
+
 		writeDownloadError(w, err, &model.Error{
 			ErrorState: model.RequestBodyNotValid,
-			ErrorText:  err.Error(),
 		})
 
 		return 400
@@ -380,24 +401,17 @@ func (app *App) bulkWhois(w http.ResponseWriter, r *http.Request) int {
 
 	var bodyWriter io.Writer = w
 
-	if config.Compress {
-		w.Header().Set("Content-Encoding", "application/gzip")
-
-		gzipWriter, err := gzip.NewWriterLevel(w, gzip.BestCompression)
-
-		if err != nil {
-			log.Print(err)
-		}
+	if config.Compression.IsCompressionEnabled() {
+		writer := app.compress(w, config.Compression)
+		bodyWriter = writer
 
 		defer func() {
-			err := gzipWriter.Close()
+			err := writer.Close()
 
 			if err != nil {
 				log.Print(err)
 			}
 		}()
-
-		bodyWriter = gzipWriter
 	}
 
 	if config.OutputForm == "" || config.OutputForm == model.JsonOutput {
@@ -446,9 +460,10 @@ func (app *App) get(w http.ResponseWriter, r *http.Request, useBody bool) int {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(400)
 
+			log.Println(err)
+
 			writeDownloadError(w, err, &model.Error{
 				ErrorState: model.UrlNotValid,
-				ErrorText:  err.Error(),
 			})
 
 			return 400
@@ -462,9 +477,10 @@ func (app *App) get(w http.ResponseWriter, r *http.Request, useBody bool) int {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(400)
 
+			log.Print(err)
+
 			writeDownloadError(w, err, &model.Error{
 				ErrorState: model.RequestBodyNotValid,
-				ErrorText:  err.Error(),
 			})
 
 			return 400

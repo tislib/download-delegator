@@ -6,7 +6,7 @@ import (
 
 type BulkWhoisConfig struct {
 	Domains        []string
-	Compress       bool
+	Compression    Compression
 	Timeout        time.Duration
 	OutputForm     OutputForm
 	MaxConcurrency int
