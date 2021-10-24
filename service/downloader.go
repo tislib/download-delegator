@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/tls"
 	"download-delegator/model"
+	ddError "download-delegator/model/errors"
 	"encoding/base64"
 	"encoding/csv"
 	"errors"
@@ -129,10 +130,10 @@ func (s *downloaderService) configureTransport(transport *http.Transport, config
 	return transport
 }
 
-func (s *downloaderService) Get(w io.Writer, ctx context.Context, config model.DownloadConfig) (int, *model.Error, error) {
+func (s *downloaderService) Get(w io.Writer, ctx context.Context, config model.DownloadConfig) (int, ddError.State, error) {
 	select {
 	case <-ctx.Done(): //context cancelled
-		return 0, nil, nil
+		return 0, ddError.NoError, nil
 	//case <-time.After(100 * time.Second): //timeout
 	default:
 
@@ -155,10 +156,7 @@ func (s *downloaderService) Get(w io.Writer, ctx context.Context, config model.D
 	if config.Url == "" {
 		err := errors.New("url must be not empty")
 
-		return 0, &model.Error{
-			ErrorState: model.UrlNotValid,
-			ErrorText:  err.Error(),
-		}, err
+		return 0, ddError.UrlNotValid, err
 	}
 
 	client := new(http.Client)
@@ -176,17 +174,15 @@ func (s *downloaderService) Get(w io.Writer, ctx context.Context, config model.D
 	req, err := http.NewRequestWithContext(ctx, "GET", config.Url, nil)
 
 	if err != nil {
+		log.Print(err)
 
-		return 0, &model.Error{
-			ErrorState: model.InternalError,
-			ErrorText:  err.Error(),
-		}, err
+		return 0, ddError.InternalError, err
 	}
 
 	resp, err := client.Do(req)
 
 	if err != nil {
-		return s.handleClientError(err)
+		return 0, s.handleClientError(err), err
 	}
 
 	headerWriter, isHeaderWriter := w.(http.ResponseWriter)
@@ -201,10 +197,8 @@ func (s *downloaderService) Get(w io.Writer, ctx context.Context, config model.D
 		body, err := ioutil.ReadAll(resp.Body)
 
 		if err != nil {
-			return resp.StatusCode, &model.Error{
-				ErrorState: model.InternalHttpClientError,
-				ErrorText:  err.Error(),
-			}, err
+			log.Print(err)
+			return resp.StatusCode, ddError.InternalHttpClientError, err
 		}
 
 		if config.Sanitize.CleanMinimal {
@@ -214,96 +208,58 @@ func (s *downloaderService) Get(w io.Writer, ctx context.Context, config model.D
 		}
 
 		if err != nil {
-			return resp.StatusCode, &model.Error{
-				ErrorState: model.SanitizerError,
-				ErrorText:  err.Error(),
-			}, err
+			log.Print(err)
+			return resp.StatusCode, ddError.SanitizerError, err
 		}
 	}
 
 	_, err = io.CopyN(w, resp.Body, 1024*1024*1024)
 
 	if err != nil && err != io.EOF {
-		return resp.StatusCode, &model.Error{
-			ErrorState: model.InternalHttpClientError,
-			ErrorText:  err.Error(),
-		}, err
+		log.Print(err)
+		return resp.StatusCode, ddError.InternalHttpClientError, err
 	}
 
 	if resp.StatusCode >= 400 {
-		return resp.StatusCode, &model.Error{
-			ErrorState: model.ClientNotSuccess,
-			ErrorText:  "client is not success",
-		}, err
+		return resp.StatusCode, ddError.ClientNotSuccess, err
 	}
 
-	return resp.StatusCode, nil, nil
+	return resp.StatusCode, ddError.NoError, nil
 }
 
-func (s *downloaderService) handleClientError(err error) (int, *model.Error, error) {
+func (s *downloaderService) handleClientError(err error) ddError.State {
 	log.Print(err)
 
 	err = unwrapErrorRecursive(err)
 
 	if timeoutError, ok := err.(net.Error); ok && timeoutError.Timeout() {
 		if strings.Contains(err.Error(), "dial tcp") {
-			return 0, &model.Error{
-				ErrorState: model.DialTimeout,
-				ErrorText:  err.Error(),
-			}, err
+			return ddError.DialTimeout
 		} else if strings.Contains(err.Error(), "TLS handshake timeout") {
-			return 0, &model.Error{
-				ErrorState: model.TlsTimeout,
-				ErrorText:  err.Error(),
-			}, err
+			return ddError.TlsTimeout
 		} else {
-			return 0, &model.Error{
-				ErrorState: model.Timeout,
-				ErrorText:  err.Error(),
-			}, err
+			return ddError.Timeout
 		}
 	}
 
-	if timeoutError, ok := err.(net.Error); ok && timeoutError.Timeout() {
-		return 0, &model.Error{
-			ErrorState: model.Timeout,
-			ErrorText:  err.Error(),
-		}, err
-	}
-
 	if dnsError, ok := err.(*net.DNSError); ok && dnsError.Timeout() {
-		return 0, &model.Error{
-			ErrorState: model.DnsTimeout,
-			ErrorText:  err.Error(),
-		}, err
+		return ddError.DnsTimeout
 	}
 
 	if dnsError, ok := err.(*net.DNSError); ok && !dnsError.Timeout() {
-		return 0, &model.Error{
-			ErrorState: model.DnsNotResolved,
-			ErrorText:  err.Error(),
-		}, err
+		return ddError.DnsNotResolved
 	}
 
 	if sysCallError, ok := err.(syscall.Errno); ok {
 		if sysCallError == syscall.ECONNREFUSED {
-			return 0, &model.Error{
-				ErrorState: model.ConnectionRefused,
-				ErrorText:  err.Error(),
-			}, err
+			return ddError.ConnectionRefused
 		}
-		return 0, &model.Error{
-			ErrorState: model.SysCallGenericError,
-			ErrorText:  err.Error(),
-		}, err
+		return ddError.SysCallGenericError
 	}
 
 	log.Print("client error: ", err)
 
-	return 0, &model.Error{
-		ErrorState: model.InternalHttpClientError,
-		ErrorText:  err.Error(),
-	}, err
+	return ddError.InternalHttpClientError
 }
 
 func unwrapErrorRecursive(err error) error {

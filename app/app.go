@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"download-delegator/model"
+	error2 "download-delegator/model/errors"
 	"download-delegator/service"
 	"encoding/json"
 	"github.com/dsnet/compress/bzip2"
@@ -142,9 +143,7 @@ func (app *App) bulkDownload(w http.ResponseWriter, r *http.Request) int {
 
 		log.Print(err)
 
-		writeDownloadError(w, err, &model.Error{
-			ErrorState: model.RequestBodyNotValid,
-		})
+		writeDownloadError(w, err, error2.RequestBodyNotValid)
 
 		return 400
 	}
@@ -208,14 +207,14 @@ func (app *App) bulkDownload(w http.ResponseWriter, r *http.Request) int {
 					duration := time.Now().Sub(beginTime)
 
 					localResItem := model.DownloadResponse{
-						Url:           item,
-						Index:         index,
-						StatusCode:    statusCode,
-						Content:       buf.String(),
-						DownloadError: downloadErr,
-						Duration:      duration,
-						Retried:       i,
-						DurationMS:    int(duration / time.Millisecond),
+						Url:        item,
+						Index:      index,
+						StatusCode: statusCode,
+						Content:    buf.String(),
+						Error:      downloadErr,
+						Duration:   duration,
+						Retried:    i,
+						DurationMS: int(duration / time.Millisecond),
 					}
 
 					resItem = localResItem
@@ -332,9 +331,7 @@ func (app *App) bulkWhois(w http.ResponseWriter, r *http.Request) int {
 
 		log.Println(err)
 
-		writeDownloadError(w, err, &model.Error{
-			ErrorState: model.RequestBodyNotValid,
-		})
+		writeDownloadError(w, err, error2.RequestBodyNotValid)
 
 		return 400
 	}
@@ -383,7 +380,7 @@ func (app *App) bulkWhois(w http.ResponseWriter, r *http.Request) int {
 				for i := 0; i < config.RetryCount; i++ {
 					resItem = service.WhoisServiceInstance.Get(item, config.Timeout)
 
-					if resItem.Error == nil {
+					if resItem.Error == error2.NoError {
 						break
 					}
 				}
@@ -466,9 +463,7 @@ func (app *App) get(w http.ResponseWriter, r *http.Request, useBody bool) int {
 
 			log.Println(err)
 
-			writeDownloadError(w, err, &model.Error{
-				ErrorState: model.UrlNotValid,
-			})
+			writeDownloadError(w, err, error2.UrlNotValid)
 
 			return 400
 		}
@@ -483,9 +478,7 @@ func (app *App) get(w http.ResponseWriter, r *http.Request, useBody bool) int {
 
 			log.Print(err)
 
-			writeDownloadError(w, err, &model.Error{
-				ErrorState: model.RequestBodyNotValid,
-			})
+			writeDownloadError(w, err, error2.RequestBodyNotValid)
 
 			return 400
 		}
@@ -493,7 +486,7 @@ func (app *App) get(w http.ResponseWriter, r *http.Request, useBody bool) int {
 
 	statusCode, downloadErr, err := service.DownloaderServiceInstance.Get(w, r.Context(), config)
 
-	if downloadErr != nil || err != nil {
+	if downloadErr != error2.NoError || err != nil {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(400)
 
@@ -538,14 +531,8 @@ func (app *App) version(w http.ResponseWriter, r *http.Request) int {
 	return 200
 }
 
-func writeDownloadError(w http.ResponseWriter, err error, downloadError *model.Error) {
-	bytes, err := json.Marshal(downloadError)
-
-	if err != nil {
-		log.Print(err)
-	}
-
-	_, err = w.Write(bytes)
+func writeDownloadError(w http.ResponseWriter, err error, error error2.State) {
+	_, err = w.Write([]byte(error))
 
 	if err != nil {
 		log.Print(err)

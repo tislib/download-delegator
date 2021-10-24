@@ -2,6 +2,7 @@ package service
 
 import (
 	"download-delegator/model"
+	error2 "download-delegator/model/errors"
 	whois "github.com/brimstone/golang-whois"
 	"log"
 	"time"
@@ -15,7 +16,7 @@ func (s *whoisService) Get(domain string, timeout time.Duration) model.WhoisResp
 
 	if domain == "" {
 		return model.WhoisResponse{
-			Error: model.DomainNotValid.Error(),
+			Error: error2.DomainNotValid,
 		}
 	}
 
@@ -32,7 +33,7 @@ func (s *whoisService) Get(domain string, timeout time.Duration) model.WhoisResp
 		Response:   data.String(),
 		Duration:   duration,
 		DurationMS: int(duration / time.Millisecond),
-		Error:      model.WhoisError.ErrorWithError(err),
+		Error:      error2.WhoisError,
 	}
 }
 

@@ -27,7 +27,7 @@ func main() {
 
 	app.Init(config)
 
-	app.Version = "1.0.1"
+	app.Version = "1.0.2"
 
 	app.Run()
 }

@@ -1,6 +1,7 @@
 package model
 
 import (
+	error2 "download-delegator/model/errors"
 	"time"
 )
 
@@ -18,7 +19,7 @@ type WhoisResponse struct {
 	Response   string
 	Duration   time.Duration
 	DurationMS int
-	Error      *Error
+	Error      error2.State
 	Index      int
 	Retried    int
 }
