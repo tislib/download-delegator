@@ -1,6 +1,7 @@
 package model
 
 import (
+	"download-delegator/lib/parser/model"
 	error2 "download-delegator/model/errors"
 	"time"
 )
@@ -16,7 +17,7 @@ type BulkDownloadConfig struct {
 	Compression    Compression
 	Proxy          bool
 	Timeout        TimeoutConfig
-	Sanitize       SanitizeConfig
+	Transform      []model.TransformerConfig
 	OutputForm     OutputForm
 	MaxConcurrency int
 	RetryCount     int

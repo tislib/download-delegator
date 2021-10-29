@@ -1,13 +1,15 @@
 package model
 
-import "time"
+import (
+	"download-delegator/lib/parser/model"
+	"time"
+)
 
 type DownloadConfig struct {
-	Url      string
-	Compress bool
-	Proxy    bool
-	Timeout  TimeoutConfig
-	Sanitize SanitizeConfig
+	Url       string
+	Proxy     bool
+	Timeout   TimeoutConfig
+	Transform []model.TransformerConfig
 }
 
 type TimeoutConfig struct {

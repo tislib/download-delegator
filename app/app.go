@@ -1,7 +1,6 @@
 package app
 
 import (
-	"bytes"
 	"compress/gzip"
 	"download-delegator/model"
 	error2 "download-delegator/model/errors"
@@ -39,10 +38,6 @@ func (app *App) Init(config model.Config) {
 
 func (app *App) Run() {
 	app.srv = &http.Server{Addr: app.config.Listen.Addr, Handler: app}
-
-	service.DownloaderServiceInstance.ProxyFile = app.config.Proxy.File
-
-	service.DownloaderServiceInstance.ConfigureSanitizer()
 
 	app.pprofHandler = pprof.Handler("pprof")
 
@@ -158,6 +153,9 @@ func (app *App) bulkDownload(w http.ResponseWriter, r *http.Request) int {
 
 	resultChan := make(chan model.DownloadResponse, config.MaxConcurrency*2)
 
+	downloaderService := new(service.DownloaderService)
+	downloaderService.InitTransformers(config.Transform)
+
 	go func() {
 		var counter int32
 		for indexX, itemX := range config.Url {
@@ -188,39 +186,22 @@ func (app *App) bulkDownload(w http.ResponseWriter, r *http.Request) int {
 				log.Print("["+(strconv.Itoa(len(config.Url)))+"/"+strconv.Itoa(index)+"]"+"begin bulk download index/url: ", index, item)
 
 				downloadConfig := model.DownloadConfig{
-					Url:      item,
-					Compress: false,
-					Sanitize: config.Sanitize,
-					Proxy:    config.Proxy,
-					Timeout:  config.Timeout,
+					Url:       item,
+					Proxy:     config.Proxy,
+					Transform: config.Transform,
+					Timeout:   config.Timeout,
 				}
-
-				var buf bytes.Buffer
-
-				beginTime := time.Now()
 
 				var resItem model.DownloadResponse
 
 				for i := 0; i < config.RetryCount; i++ {
-					statusCode, downloadErr, err := service.DownloaderServiceInstance.Get(&buf, r.Context(), downloadConfig)
+					resItem = downloaderService.Get(r.Context(), downloadConfig)
 
-					duration := time.Now().Sub(beginTime)
-
-					localResItem := model.DownloadResponse{
-						Url:        item,
-						Index:      index,
-						StatusCode: statusCode,
-						Content:    buf.String(),
-						Error:      downloadErr,
-						Duration:   duration,
-						Retried:    i,
-						DurationMS: int(duration / time.Millisecond),
-					}
-
-					resItem = localResItem
+					resItem.Index = index
+					resItem.Retried = i
 
 					if err != nil {
-						log.Print("["+(strconv.Itoa(len(config.Url)))+"/"+strconv.Itoa(index)+"]"+"end bulk download index/url: ", index, item, statusCode, len(resItem.Content), int(duration/time.Millisecond))
+						log.Print("["+(strconv.Itoa(len(config.Url)))+"/"+strconv.Itoa(index)+"]"+"end bulk download index/url: ", index, item, resItem.StatusCode, len(resItem.Content), resItem.DurationMS)
 						break
 					}
 				}
@@ -484,22 +465,23 @@ func (app *App) get(w http.ResponseWriter, r *http.Request, useBody bool) int {
 		}
 	}
 
-	statusCode, downloadErr, err := service.DownloaderServiceInstance.Get(w, r.Context(), config)
+	downloaderService := new(service.DownloaderService)
+	downloaderService.InitTransformers(config.Transform)
 
-	if downloadErr != error2.NoError || err != nil {
+	downloadResponse := downloaderService.Get(r.Context(), config)
+
+	if downloadResponse.Error != error2.NoError {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(400)
 
-		writeDownloadError(w, err, downloadErr)
+		writeDownloadError(w, nil, downloadResponse.Error)
 
 		return 400
 	}
 
-	if config.Compress {
-		w.Header().Set("Content-Encoding", "gzip")
-	}
+	w.Write([]byte(downloadResponse.Content))
 
-	return statusCode
+	return downloadResponse.StatusCode
 }
 
 func (app *App) parseConfig(query url.Values, err error) model.DownloadConfig {
@@ -515,11 +497,6 @@ func (app *App) parseConfig(query url.Values, err error) model.DownloadConfig {
 		Proxy: query.Get("proxy") == "true",
 		Timeout: model.TimeoutConfig{
 			RequestTimeout: time.Duration(timeout) * time.Millisecond,
-		},
-		Compress: query.Get("compress") == "true",
-		Sanitize: model.SanitizeConfig{
-			CleanMinimal:  query.Get("cleanMinimal") == "true",
-			CleanMinimal2: query.Get("cleanMinimal2") == "true",
 		},
 	}
 	return config

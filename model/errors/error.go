@@ -15,6 +15,8 @@ const (
 	RequestBodyNotValid     State = "request-body-not-valid"
 	InternalError           State = "internal-error"
 	InternalHttpClientError State = "internal-http-client-error"
+	TransformerError        State = "transformer-error"
+	WriterError             State = "writer-error"
 	DialTimeout             State = "dial-timeout"
 	Timeout                 State = "timeout"
 	TlsTimeout              State = "tls-timeout"
@@ -24,4 +26,8 @@ const (
 	SysCallGenericError     State = "sys-call-generic-error"
 	DnsTimeout              State = "dns-timeout"
 	ClientNotSuccess        State = "client-not-success"
+
+	// TengoCompileError tengo
+	TengoCompileError State = "tengo-compile-error"
+	JsCompileError    State = "js-compile-error"
 )
