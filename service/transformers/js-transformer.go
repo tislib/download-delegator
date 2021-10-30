@@ -11,7 +11,10 @@ import (
 type JsTransformer struct {
 	prog *goja.Program
 	lib  struct {
-		ParseHtml func(htmlContent string) model.DocNode
+		Parser struct {
+			ParseHtml func(htmlContent string) (model.DocNode, error)
+			Processor parser.Processor
+		}
 	}
 }
 
@@ -46,17 +49,7 @@ func (s *JsTransformer) Transform(input []byte) ([]byte, error2.State) {
 }
 
 func (s *JsTransformer) Init(parameters interface{}) {
-	s.lib.ParseHtml = func(htmlContent string) model.DocNode {
-		res, err := parser.ParseHtml(htmlContent)
-
-		if err != nil {
-			log.Print(err)
-
-			return nil
-		}
-
-		return res
-	}
+	s.initLib()
 
 	prog, err := goja.Compile("js-transformer", parameters.(string), false)
 
@@ -65,4 +58,9 @@ func (s *JsTransformer) Init(parameters interface{}) {
 	}
 
 	s.prog = prog
+}
+
+func (s *JsTransformer) initLib() {
+	s.lib.Parser.ParseHtml = parser.ParseHtml
+	s.lib.Parser.Processor = parser.Processor{}
 }

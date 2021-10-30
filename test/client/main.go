@@ -28,7 +28,7 @@ func main() {
 
 	bulkDownload := new(model.BulkDownloadConfig)
 
-	bulkDownload.MaxConcurrency = 150
+	bulkDownload.MaxConcurrency = 10
 	bulkDownload.OutputForm = model.JsonOutput
 	bulkDownload.RetryCount = 1
 	bulkDownload.Timeout = model.TimeoutConfig{

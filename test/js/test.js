@@ -1,8 +1,8 @@
 
-res = lib.ParseHtml(input)
+res = lib.Parser.ParseHtml(input)
 
 output = JSON.stringify({
     "aaa": "bbb",
     "input": input,
-    "res": res.FindSingle("head")
+    "res": res.FindSingle("p").Text()
 })

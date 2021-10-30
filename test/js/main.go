@@ -7,7 +7,7 @@ import (
 )
 
 func main() {
-	var input = []byte("<p>hello world 123</p>")
+	var input = []byte("<p>hello world 123</p>abcxsas asdasd")
 
 	transformer := new(transformers.JsTransformer)
 
