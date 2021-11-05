@@ -2,13 +2,13 @@ package service
 
 import (
 	"download-delegator/lib/parser/model"
+	transformers2 "download-delegator/lib/transformers"
 	error2 "download-delegator/model/errors"
-	"download-delegator/service/transformers"
-	"log"
+	log "github.com/sirupsen/logrus"
 )
 
 type TransformerService struct {
-	transformers []transformers.Transformer
+	transformers []transformers2.Transformer
 }
 
 func (s *TransformerService) Transform(input []byte) ([]byte, error2.State) {
@@ -41,18 +41,12 @@ func (s *TransformerService) Init(transformerConfigs []model.TransformerConfig) 
 	}
 }
 
-func (s *TransformerService) locateTransformer(transformerType model.TransformerType) transformers.Transformer {
+func (s *TransformerService) locateTransformer(transformerType model.TransformerType) transformers2.Transformer {
 	switch transformerType {
-	case model.Sanitize:
-		return new(transformers.SanitizeTransformer)
-	case model.Sanitize2:
-		return new(transformers.Sanitize2Transformer)
-	case model.HtmlFormat:
-		return new(transformers.HtmlFormatTransformer)
 	case model.ScriptTengo:
-		return new(transformers.TengoTransformer)
+		return new(transformers2.TengoTransformer)
 	case model.ScriptJs:
-		return new(transformers.JsTransformer)
+		return new(transformers2.JsTransformer)
 	default:
 		return nil
 	}

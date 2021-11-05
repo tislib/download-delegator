@@ -1,7 +1,7 @@
 package app
 
 import (
-	"log"
+	log "github.com/sirupsen/logrus"
 	"time"
 )
 

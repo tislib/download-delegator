@@ -2,8 +2,8 @@ package markers
 
 import (
 	"download-delegator/lib/parser/model"
+	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/html"
-	"log"
 	"regexp"
 	"strconv"
 	"strings"

@@ -3,7 +3,7 @@ package parser
 import (
 	"download-delegator/lib/parser/model"
 	"github.com/google/uuid"
-	"log"
+	log "github.com/sirupsen/logrus"
 	"net/url"
 	"regexp"
 	"strconv"

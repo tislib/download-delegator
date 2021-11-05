@@ -4,7 +4,7 @@ import (
 	"download-delegator/model"
 	error2 "download-delegator/model/errors"
 	whois "github.com/brimstone/golang-whois"
-	"log"
+	log "github.com/sirupsen/logrus"
 	"time"
 )
 

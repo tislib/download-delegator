@@ -4,13 +4,13 @@ import (
 	"context"
 	"crypto/tls"
 	model2 "download-delegator/lib/parser/model"
+	"download-delegator/lib/transformers"
 	"download-delegator/model"
 	ddError "download-delegator/model/errors"
-	"download-delegator/service/transformers"
 	"encoding/base64"
 	"errors"
+	log "github.com/sirupsen/logrus"
 	"io/ioutil"
-	"log"
 	"math/rand"
 	"net"
 	"net/http"
@@ -24,6 +24,8 @@ type DownloaderService struct {
 	proxyList    []model.ProxyItemConfig
 	transformer  *TransformerService
 	transformers []transformers.Transformer
+	useProxy     bool
+	timeout      model.TimeoutConfig
 }
 
 func (s *DownloaderService) locateRandomProxy() *model.ProxyItemConfig {
@@ -35,7 +37,7 @@ func (s *DownloaderService) locateRandomProxy() *model.ProxyItemConfig {
 	return nil
 }
 
-func (s *DownloaderService) configureProxy(client *http.Client, config model.DownloadConfig) {
+func (s *DownloaderService) configureProxy(client *http.Client) {
 	ProxyItemConfig := s.locateRandomProxy()
 
 	if ProxyItemConfig == nil {
@@ -52,16 +54,15 @@ func (s *DownloaderService) configureProxy(client *http.Client, config model.Dow
 	auth := ProxyItemConfig.Username + ":" + ProxyItemConfig.Password
 	basicAuth := "Basic " + base64.StdEncoding.EncodeToString([]byte(auth))
 
-	client.Transport = s.configureTransport(&http.Transport{
-		Proxy: http.ProxyURL(proxyUrl),
-		ProxyConnectHeader: map[string][]string{
-			"Proxy-Authorization": append([]string{}, basicAuth),
-		},
-	}, config)
+	transport := client.Transport.(*http.Transport)
+	transport.Proxy = http.ProxyURL(proxyUrl)
+	transport.ProxyConnectHeader = map[string][]string{
+		"Proxy-Authorization": append([]string{}, basicAuth),
+	}
 }
 
-func (s *DownloaderService) configureTransport(transport *http.Transport, config model.DownloadConfig) *http.Transport {
-	transport.TLSHandshakeTimeout = config.Timeout.TLSHandshakeTimeout
+func (s *DownloaderService) configureTransport(transport *http.Transport) *http.Transport {
+	transport.TLSHandshakeTimeout = s.timeout.TLSHandshakeTimeout
 	transport.ExpectContinueTimeout = 1 * time.Second
 	transport.MaxIdleConns = 0
 	transport.TLSClientConfig = &tls.Config{
@@ -69,20 +70,20 @@ func (s *DownloaderService) configureTransport(transport *http.Transport, config
 	}
 
 	transport.DialContext = (&net.Dialer{
-		Timeout:   config.Timeout.DialTimeout,
+		Timeout:   s.timeout.DialTimeout,
 		KeepAlive: -1,
 	}).DialContext
 
 	return transport
 }
 
-func (s *DownloaderService) Get(ctx context.Context, config model.DownloadConfig) model.DownloadResponse {
+func (s *DownloaderService) Get(ctx context.Context, url string) model.DownloadResponse {
 	beginTime := time.Now()
 
 	select {
 	case <-ctx.Done(): //context cancelled
 		return model.DownloadResponse{
-			Url:        config.Url,
+			Url:        url,
 			Duration:   time.Now().Sub(beginTime),
 			DurationMS: int(time.Now().Sub(beginTime) / time.Millisecond),
 			Error:      ddError.Timeout,
@@ -92,9 +93,9 @@ func (s *DownloaderService) Get(ctx context.Context, config model.DownloadConfig
 
 	}
 
-	if config.Url == "" {
+	if url == "" {
 		return model.DownloadResponse{
-			Url:        config.Url,
+			Url:        url,
 			Duration:   time.Now().Sub(beginTime),
 			DurationMS: int(time.Now().Sub(beginTime) / time.Millisecond),
 			Error:      ddError.UrlNotValid,
@@ -102,24 +103,24 @@ func (s *DownloaderService) Get(ctx context.Context, config model.DownloadConfig
 	}
 
 	client := new(http.Client)
-	client.Timeout = config.Timeout.RequestTimeout
+	client.Timeout = s.timeout.RequestTimeout
 	defer func() {
 		client.CloseIdleConnections()
 	}()
 
-	if config.Proxy {
-		s.configureProxy(client, config)
-	} else {
-		client.Transport = s.configureTransport(&http.Transport{}, config)
+	client.Transport = s.configureTransport(&http.Transport{})
+
+	if s.useProxy {
+		s.configureProxy(client)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, "GET", config.Url, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 
 	if err != nil {
 		log.Print(err)
 
 		return model.DownloadResponse{
-			Url:        config.Url,
+			Url:        url,
 			Duration:   time.Now().Sub(beginTime),
 			DurationMS: int(time.Now().Sub(beginTime) / time.Millisecond),
 			Error:      ddError.InternalError,
@@ -132,7 +133,7 @@ func (s *DownloaderService) Get(ctx context.Context, config model.DownloadConfig
 		log.Print(err)
 
 		return model.DownloadResponse{
-			Url:        config.Url,
+			Url:        url,
 			Duration:   time.Now().Sub(beginTime),
 			DurationMS: int(time.Now().Sub(beginTime) / time.Millisecond),
 			Error:      s.handleClientError(err),
@@ -148,19 +149,19 @@ func (s *DownloaderService) Get(ctx context.Context, config model.DownloadConfig
 		log.Print(err)
 
 		return model.DownloadResponse{
-			Url:        config.Url,
+			Url:        url,
 			Duration:   time.Now().Sub(beginTime),
 			DurationMS: int(time.Now().Sub(beginTime) / time.Millisecond),
 			Error:      ddError.InternalHttpClientError,
 		}
 	}
 
-	if len(config.Transform) > 0 {
+	if len(s.transformers) > 0 {
 		body, err2 = s.transformer.Transform(body)
 
 		if err2 != ddError.NoError {
 			return model.DownloadResponse{
-				Url:        config.Url,
+				Url:        url,
 				Duration:   time.Now().Sub(beginTime),
 				DurationMS: int(time.Now().Sub(beginTime) / time.Millisecond),
 				Error:      err2,
@@ -171,7 +172,7 @@ func (s *DownloaderService) Get(ctx context.Context, config model.DownloadConfig
 			log.Print(err)
 
 			return model.DownloadResponse{
-				Url:        config.Url,
+				Url:        url,
 				Duration:   time.Now().Sub(beginTime),
 				DurationMS: int(time.Now().Sub(beginTime) / time.Millisecond),
 				StatusCode: resp.StatusCode,
@@ -187,7 +188,7 @@ func (s *DownloaderService) Get(ctx context.Context, config model.DownloadConfig
 	}
 
 	return model.DownloadResponse{
-		Url:        config.Url,
+		Url:        url,
 		Duration:   time.Now().Sub(beginTime),
 		DurationMS: int(time.Now().Sub(beginTime) / time.Millisecond),
 		StatusCode: resp.StatusCode,
@@ -231,9 +232,17 @@ func (s *DownloaderService) handleClientError(err error) ddError.State {
 	return ddError.InternalHttpClientError
 }
 
-func (s *DownloaderService) InitTransformers(transformerConfigs []model2.TransformerConfig) {
+func (s *DownloaderService) ConfigureTransformers(transformerConfigs []model2.TransformerConfig) {
 	s.transformer = new(TransformerService)
 	s.transformer.Init(transformerConfigs)
+}
+
+func (s *DownloaderService) EnableProxy(proxy bool) {
+	s.useProxy = proxy
+}
+
+func (s *DownloaderService) ConfigureTimeout(timeout model.TimeoutConfig) {
+	s.timeout = timeout
 }
 
 func unwrapErrorRecursive(err error) error {

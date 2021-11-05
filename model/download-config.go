@@ -17,8 +17,3 @@ type TimeoutConfig struct {
 	DialTimeout         time.Duration
 	RequestTimeout      time.Duration
 }
-
-type SanitizeConfig struct {
-	CleanMinimal  bool
-	CleanMinimal2 bool
-}

@@ -3,7 +3,7 @@ package parser
 import (
 	"download-delegator/lib/parser/markers"
 	"download-delegator/lib/parser/model"
-	"log"
+	log "github.com/sirupsen/logrus"
 )
 
 type Processor struct {

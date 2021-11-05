@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"crypto/tls"
 	"download-delegator/model"
+	log "github.com/sirupsen/logrus"
 	"io"
-	"log"
 	"net/http"
 	url2 "net/url"
 	"testing"
@@ -16,9 +16,6 @@ func runServer() *App {
 
 	app.Addr = ":0"
 	app.Async = true
-
-	app.CertFile = "../server.crt"
-	app.KeyFile = "../server.key"
 
 	app.Run()
 
@@ -33,8 +30,8 @@ func TestDnsResolveProblem(t *testing.T) {
 	log.Print(app.GetAddr())
 
 	config := model.DownloadConfig{
-		Url:     "non-existing-domain-123.com",
-		NoProxy: true,
+		Url:   "non-existing-domain-123.com",
+		Proxy: true,
 	}
 
 	var buf bytes.Buffer
@@ -50,17 +47,17 @@ func TestDnsResolveProblem(t *testing.T) {
 }
 
 func Get(app *App, w io.Writer, config model.DownloadConfig) (int, error) {
-	url := "https://" + app.GetAddr() + "/get"
+	url := "http://" + app.GetAddr() + "/get"
 
 	url += "?url=" + url2.PathEscape(config.Url)
-	if config.NoProxy {
+	if !config.Proxy {
 		url += "&noProxy"
 	}
 
 	resp, err := http.Get(url)
 
 	if err != nil {
-		return resp.StatusCode, err
+		return 0, err
 	}
 
 	_, err = io.Copy(w, resp.Body)

@@ -5,9 +5,9 @@ import (
 	"bytes"
 	"download-delegator/lib/parser/model"
 	"github.com/PuerkitoBio/goquery"
+	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/html"
 	"golang.org/x/net/html/atom"
-	"log"
 	"strings"
 )
 

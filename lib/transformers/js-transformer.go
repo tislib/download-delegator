@@ -5,7 +5,7 @@ import (
 	"download-delegator/lib/parser/model"
 	error2 "download-delegator/model/errors"
 	"github.com/dop251/goja"
-	"log"
+	log "github.com/sirupsen/logrus"
 )
 
 type JsTransformer struct {

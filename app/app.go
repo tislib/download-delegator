@@ -8,8 +8,8 @@ import (
 	"encoding/json"
 	"github.com/dsnet/compress/bzip2"
 	"github.com/klauspost/compress/zstd"
+	log "github.com/sirupsen/logrus"
 	"io"
-	"log"
 	"net"
 	"net/http"
 	pprof "net/http/pprof"
@@ -154,7 +154,9 @@ func (app *App) bulkDownload(w http.ResponseWriter, r *http.Request) int {
 	resultChan := make(chan model.DownloadResponse, config.MaxConcurrency*2)
 
 	downloaderService := new(service.DownloaderService)
-	downloaderService.InitTransformers(config.Transform)
+	downloaderService.ConfigureTransformers(config.Transform)
+	downloaderService.ConfigureTimeout(config.Timeout)
+	downloaderService.EnableProxy(config.Proxy)
 
 	go func() {
 		var counter int32
@@ -185,17 +187,10 @@ func (app *App) bulkDownload(w http.ResponseWriter, r *http.Request) int {
 
 				log.Print("["+(strconv.Itoa(len(config.Url)))+"/"+strconv.Itoa(index)+"]"+"begin bulk download index/url: ", index, item)
 
-				downloadConfig := model.DownloadConfig{
-					Url:       item,
-					Proxy:     config.Proxy,
-					Transform: config.Transform,
-					Timeout:   config.Timeout,
-				}
-
 				var resItem model.DownloadResponse
 
 				for i := 0; i < config.RetryCount; i++ {
-					resItem = downloaderService.Get(r.Context(), downloadConfig)
+					resItem = downloaderService.Get(r.Context(), item)
 
 					resItem.Index = index
 					resItem.Retried = i
@@ -466,9 +461,9 @@ func (app *App) get(w http.ResponseWriter, r *http.Request, useBody bool) int {
 	}
 
 	downloaderService := new(service.DownloaderService)
-	downloaderService.InitTransformers(config.Transform)
+	downloaderService.ConfigureTransformers(config.Transform)
 
-	downloadResponse := downloaderService.Get(r.Context(), config)
+	downloadResponse := downloaderService.Get(r.Context(), config.Url)
 
 	if downloadResponse.Error != error2.NoError {
 		w.Header().Set("Content-Type", "application/json")

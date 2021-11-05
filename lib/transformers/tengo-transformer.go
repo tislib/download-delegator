@@ -4,7 +4,7 @@ import (
 	"context"
 	error2 "download-delegator/model/errors"
 	"github.com/d5/tengo/v2"
-	"log"
+	log "github.com/sirupsen/logrus"
 )
 
 type TengoTransformer struct {

@@ -4,7 +4,7 @@ import (
 	appPackage "download-delegator/app"
 	"download-delegator/model"
 	"github.com/BurntSushi/toml"
-	"log"
+	log "github.com/sirupsen/logrus"
 	"os"
 )
 
