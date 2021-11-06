@@ -15,6 +15,6 @@ require (
 	github.com/klauspost/compress v1.13.6
 	github.com/pborman/uuid v1.2.1
 	github.com/sirupsen/logrus v1.8.1
+	github.com/stretchr/testify v1.6.1
 	golang.org/x/net v0.0.0-20210929193557-e81a3d93ecf6
-	golang.org/x/sync v0.0.0-20201207232520-09787c993a3a
 )
