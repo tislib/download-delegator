@@ -1,0 +1,8 @@
+POST http://localhost:8234/bulk
+
+{
+    "url": ["https://imdb.com", "https://www.rottentomatoes.com/browse/opening"],
+    "compression": {
+        "algo": "bzip2"
+    }
+}

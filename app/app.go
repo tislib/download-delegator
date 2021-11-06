@@ -134,7 +134,7 @@ func (app *App) bulkDownload(w http.ResponseWriter, r *http.Request) int {
 
 	err := json.NewDecoder(r.Body).Decode(&config)
 
-	log.Print(config)
+	log.Trace("bulk download config", config)
 
 	if err != nil {
 		w.Header().Set("Content-Type", "application/json")
@@ -193,7 +193,7 @@ func (app *App) bulkDownload(w http.ResponseWriter, r *http.Request) int {
 
 				var resItem model2.DownloadResponse
 
-				for i := 0; i < config.RetryCount; i++ {
+				for i := 0; i < config.RetryCount+1; i++ {
 					resItem = downloaderService.Get(r.Context(), item)
 
 					resItem.Index = index

@@ -15,4 +15,5 @@ FROM alpine:latest
 RUN apk --no-cache add ca-certificates
 WORKDIR /root/
 COPY --from=0 /app/download-delegator ./
-CMD ["./download-delegator"]
+COPY container.config.toml ./container.config.toml
+CMD ["./download-delegator", "container.config.toml"]

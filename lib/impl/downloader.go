@@ -246,6 +246,18 @@ func (s *DownloaderService) EnableProxy(proxy bool) {
 
 func (s *DownloaderService) ConfigureTimeout(timeout model3.TimeoutConfig) {
 	s.timeout = timeout
+
+	if s.timeout.TLSHandshakeTimeout == 0 {
+		s.timeout.TLSHandshakeTimeout = time.Second
+	}
+
+	if s.timeout.DialTimeout == 0 {
+		s.timeout.DialTimeout = time.Second
+	}
+
+	if s.timeout.RequestTimeout == 0 {
+		s.timeout.RequestTimeout = time.Second * 2
+	}
 }
 
 func unwrapErrorRecursive(err error) error {
