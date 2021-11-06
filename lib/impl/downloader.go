@@ -88,7 +88,6 @@ func (s *DownloaderService) Get(ctx context.Context, url string) model3.Download
 			DurationMS: int(time.Now().Sub(beginTime) / time.Millisecond),
 			Error:      ddError.Timeout,
 		}
-	//case <-time.After(100 * time.Second): //timeout
 	default:
 
 	}
