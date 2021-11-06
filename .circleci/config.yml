@@ -19,6 +19,15 @@ jobs:
           keys:
             - go-mod-v4-{{ checksum "go.sum" }}
       - run:
+          name: Go get
+          command: go get
+      - run:
+          name: Go get app
+          command: go get -t download-delegator/app
+      - run:
+          name: Go get awslambda
+          command: go get download-delegator/awslambda
+      - run:
           name: Install Dependencies
           command: go mod download
       - save_cache:
