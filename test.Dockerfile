@@ -4,6 +4,7 @@ WORKDIR /app
 COPY . /app
 
 RUN go get
-RUN go get gotest.tools/gotestsum
+RUN go get download-delegator/awslambda
+RUN go get download-delegator/app
 
 RUN gotestsum
