@@ -1,11 +1,13 @@
-FROM ubuntu
+FROM golang:1.16
+WORKDIR /app
 
-COPY download-delegator /
+COPY . /app
 
-COPY server.crt /
-COPY server.key /
+RUN CGO_ENABLED=0 GOOS=linux go build -o download-delegator .
 
-COPY container.config.toml /config.toml
 
-# Command to run
-ENTRYPOINT ["/download-delegator", "/config.toml"]
+FROM alpine:latest
+RUN apk --no-cache add ca-certificates
+WORKDIR /root/
+COPY --from=0 /app/download-delegator ./
+CMD ["./download-delegator"]
