@@ -2,7 +2,7 @@ package main
 
 import (
 	appPackage "download-delegator/app"
-	"download-delegator/model"
+	"download-delegator/core/model"
 	"github.com/BurntSushi/toml"
 	log "github.com/sirupsen/logrus"
 	"os"

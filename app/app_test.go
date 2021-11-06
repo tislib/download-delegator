@@ -1,21 +1,31 @@
 package app
 
 import (
-	"bytes"
+	"context"
 	"crypto/tls"
-	"download-delegator/model"
+	client2 "download-delegator/client"
+	"download-delegator/core/model"
+	error2 "download-delegator/core/model/errors"
 	log "github.com/sirupsen/logrus"
-	"io"
+	"github.com/stretchr/testify/assert"
 	"net/http"
-	url2 "net/url"
 	"testing"
 )
 
 func runServer() *App {
 	app := new(App)
 
-	app.Addr = ":0"
 	app.Async = true
+
+	app.Init(model.Config{
+		Concurrency: model.ConcurrencyConfig{
+			MaxConcurrency: 100,
+		},
+		Listen: model.ListenConfig{
+			Addr: ":0",
+		},
+		Proxy: model.ProxyConfig{},
+	})
 
 	app.Run()
 
@@ -24,43 +34,41 @@ func runServer() *App {
 	return app
 }
 
-func TestDnsResolveProblem(t *testing.T) {
-	app := runServer()
+var app *App
+var client *client2.DownloadDelegatorClient
 
+func init() {
+	app = runServer()
+	client = new(client2.DownloadDelegatorClient)
+	client.Init(client2.InitConfig{Addr: app.GetAddr()})
+
+	log.SetLevel(log.TraceLevel)
+}
+
+func TestGetOnUrlWithoutProtocolAndGetProtocolSchemaError(t *testing.T) {
 	log.Print(app.GetAddr())
 
 	config := model.DownloadConfig{
-		Url:   "non-existing-domain-123.com",
-		Proxy: true,
+		Url: "non-existing-domain-123.com",
 	}
 
-	var buf bytes.Buffer
+	response, err := client.Get(context.TODO(), config)
 
-	statusCode, err := Get(app, &buf, config)
-
-	if err != nil {
-		log.Panic(err)
-	}
-
-	log.Print("FINISH!")
-	log.Print(statusCode, buf.String())
+	assert.Nil(t, err)
+	assert.Equal(t, 0, response.StatusCode)
+	assert.Equal(t, error2.UnsupportedProtocolSchema, response.Error)
 }
 
-func Get(app *App, w io.Writer, config model.DownloadConfig) (int, error) {
-	url := "http://" + app.GetAddr() + "/get"
+func TestGetOnUrlWithNonExistentDomainAndGetDnsError(t *testing.T) {
+	log.Print(app.GetAddr())
 
-	url += "?url=" + url2.PathEscape(config.Url)
-	if !config.Proxy {
-		url += "&noProxy"
+	config := model.DownloadConfig{
+		Url: "http://non-existing-domain-123.com",
 	}
 
-	resp, err := http.Get(url)
+	response, err := client.Get(context.TODO(), config)
 
-	if err != nil {
-		return 0, err
-	}
-
-	_, err = io.Copy(w, resp.Body)
-
-	return resp.StatusCode, err
+	assert.Nil(t, err)
+	assert.Equal(t, 0, response.StatusCode)
+	assert.Equal(t, error2.DnsNotResolved, response.Error)
 }

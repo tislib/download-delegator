@@ -2,7 +2,7 @@ package transformers
 
 import (
 	"context"
-	error2 "download-delegator/model/errors"
+	error2 "download-delegator/core/model/errors"
 	"github.com/d5/tengo/v2"
 	log "github.com/sirupsen/logrus"
 )

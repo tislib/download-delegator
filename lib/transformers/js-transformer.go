@@ -1,9 +1,9 @@
 package transformers
 
 import (
+	error2 "download-delegator/core/model/errors"
 	"download-delegator/lib/parser"
 	"download-delegator/lib/parser/model"
-	error2 "download-delegator/model/errors"
 	"github.com/dop251/goja"
 	log "github.com/sirupsen/logrus"
 )

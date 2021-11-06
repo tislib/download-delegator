@@ -1,8 +1,8 @@
 package service
 
 import (
-	"download-delegator/model"
-	error2 "download-delegator/model/errors"
+	"download-delegator/core/model"
+	error2 "download-delegator/core/model/errors"
 	whois "github.com/brimstone/golang-whois"
 	log "github.com/sirupsen/logrus"
 	"time"

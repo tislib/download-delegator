@@ -3,9 +3,9 @@ package main
 import (
 	"context"
 	"download-delegator/app"
-	"download-delegator/model"
-	"download-delegator/model/errors"
-	"download-delegator/service"
+	"download-delegator/core/model"
+	"download-delegator/core/model/errors"
+	"download-delegator/lib/impl"
 	"encoding/json"
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"

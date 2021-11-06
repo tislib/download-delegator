@@ -1,8 +1,8 @@
 package model
 
 import (
+	error2 "download-delegator/core/model/errors"
 	"download-delegator/lib/parser/model"
-	error2 "download-delegator/model/errors"
 	"time"
 )
 

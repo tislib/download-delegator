@@ -3,10 +3,10 @@ package service
 import (
 	"context"
 	"crypto/tls"
+	model3 "download-delegator/core/model"
+	ddError "download-delegator/core/model/errors"
 	model2 "download-delegator/lib/parser/model"
 	"download-delegator/lib/transformers"
-	"download-delegator/model"
-	ddError "download-delegator/model/errors"
 	"encoding/base64"
 	"errors"
 	log "github.com/sirupsen/logrus"
@@ -21,14 +21,14 @@ import (
 )
 
 type DownloaderService struct {
-	proxyList    []model.ProxyItemConfig
+	proxyList    []model3.ProxyItemConfig
 	transformer  *TransformerService
 	transformers []transformers.Transformer
 	useProxy     bool
-	timeout      model.TimeoutConfig
+	timeout      model3.TimeoutConfig
 }
 
-func (s *DownloaderService) locateRandomProxy() *model.ProxyItemConfig {
+func (s *DownloaderService) locateRandomProxy() *model3.ProxyItemConfig {
 	if len(s.proxyList) > 0 {
 		randomIndex := rand.Intn(len(s.proxyList))
 		return &s.proxyList[randomIndex]
@@ -77,12 +77,12 @@ func (s *DownloaderService) configureTransport(transport *http.Transport) *http.
 	return transport
 }
 
-func (s *DownloaderService) Get(ctx context.Context, url string) model.DownloadResponse {
+func (s *DownloaderService) Get(ctx context.Context, url string) model3.DownloadResponse {
 	beginTime := time.Now()
 
 	select {
 	case <-ctx.Done(): //context cancelled
-		return model.DownloadResponse{
+		return model3.DownloadResponse{
 			Url:        url,
 			Duration:   time.Now().Sub(beginTime),
 			DurationMS: int(time.Now().Sub(beginTime) / time.Millisecond),
@@ -94,7 +94,7 @@ func (s *DownloaderService) Get(ctx context.Context, url string) model.DownloadR
 	}
 
 	if url == "" {
-		return model.DownloadResponse{
+		return model3.DownloadResponse{
 			Url:        url,
 			Duration:   time.Now().Sub(beginTime),
 			DurationMS: int(time.Now().Sub(beginTime) / time.Millisecond),
@@ -119,7 +119,7 @@ func (s *DownloaderService) Get(ctx context.Context, url string) model.DownloadR
 	if err != nil {
 		log.Print(err)
 
-		return model.DownloadResponse{
+		return model3.DownloadResponse{
 			Url:        url,
 			Duration:   time.Now().Sub(beginTime),
 			DurationMS: int(time.Now().Sub(beginTime) / time.Millisecond),
@@ -132,7 +132,7 @@ func (s *DownloaderService) Get(ctx context.Context, url string) model.DownloadR
 	if err != nil {
 		log.Print(err)
 
-		return model.DownloadResponse{
+		return model3.DownloadResponse{
 			Url:        url,
 			Duration:   time.Now().Sub(beginTime),
 			DurationMS: int(time.Now().Sub(beginTime) / time.Millisecond),
@@ -148,7 +148,7 @@ func (s *DownloaderService) Get(ctx context.Context, url string) model.DownloadR
 	if err != nil {
 		log.Print(err)
 
-		return model.DownloadResponse{
+		return model3.DownloadResponse{
 			Url:        url,
 			Duration:   time.Now().Sub(beginTime),
 			DurationMS: int(time.Now().Sub(beginTime) / time.Millisecond),
@@ -160,7 +160,7 @@ func (s *DownloaderService) Get(ctx context.Context, url string) model.DownloadR
 		body, err2 = s.transformer.Transform(body)
 
 		if err2 != ddError.NoError {
-			return model.DownloadResponse{
+			return model3.DownloadResponse{
 				Url:        url,
 				Duration:   time.Now().Sub(beginTime),
 				DurationMS: int(time.Now().Sub(beginTime) / time.Millisecond),
@@ -171,7 +171,7 @@ func (s *DownloaderService) Get(ctx context.Context, url string) model.DownloadR
 		if err != nil {
 			log.Print(err)
 
-			return model.DownloadResponse{
+			return model3.DownloadResponse{
 				Url:        url,
 				Duration:   time.Now().Sub(beginTime),
 				DurationMS: int(time.Now().Sub(beginTime) / time.Millisecond),
@@ -187,7 +187,7 @@ func (s *DownloaderService) Get(ctx context.Context, url string) model.DownloadR
 		errs = ddError.ClientNotSuccess
 	}
 
-	return model.DownloadResponse{
+	return model3.DownloadResponse{
 		Url:        url,
 		Duration:   time.Now().Sub(beginTime),
 		DurationMS: int(time.Now().Sub(beginTime) / time.Millisecond),
@@ -227,6 +227,10 @@ func (s *DownloaderService) handleClientError(err error) ddError.State {
 		return ddError.SysCallGenericError
 	}
 
+	if strings.Contains(err.Error(), "unsupported protocol scheme") {
+		return ddError.UnsupportedProtocolSchema
+	}
+
 	log.Print("client error: ", err)
 
 	return ddError.InternalHttpClientError
@@ -241,7 +245,7 @@ func (s *DownloaderService) EnableProxy(proxy bool) {
 	s.useProxy = proxy
 }
 
-func (s *DownloaderService) ConfigureTimeout(timeout model.TimeoutConfig) {
+func (s *DownloaderService) ConfigureTimeout(timeout model3.TimeoutConfig) {
 	s.timeout = timeout
 }
 

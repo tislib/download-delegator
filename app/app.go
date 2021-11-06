@@ -2,9 +2,10 @@ package app
 
 import (
 	"compress/gzip"
-	"download-delegator/model"
-	error2 "download-delegator/model/errors"
-	"download-delegator/service"
+	model2 "download-delegator/core/model"
+	error2 "download-delegator/core/model/errors"
+	"download-delegator/core/service"
+	service2 "download-delegator/lib/impl"
 	"encoding/json"
 	"github.com/dsnet/compress/bzip2"
 	"github.com/klauspost/compress/zstd"
@@ -24,16 +25,19 @@ import (
 type App struct {
 	srv          *http.Server
 	Async        bool
-	config       model.Config
-	Addr         string
+	config       model2.Config
+	addr         string
 	pprofHandler http.Handler
 	Version      string
+	appService   service.AppService
 }
 
-func (app *App) Init(config model.Config) {
+func (app *App) Init(config model2.Config) {
 	app.config = config
 
-	app.Addr = config.Listen.Addr
+	app.addr = config.Listen.Addr
+
+	app.appService = new(service2.AppServiceImpl)
 }
 
 func (app *App) Run() {
@@ -54,7 +58,7 @@ func (app *App) ListenAndServeAsync() {
 	if err != nil {
 		log.Panic(err)
 	}
-	app.Addr = ln.Addr().String()
+	app.addr = ln.Addr().String()
 
 	if app.Async {
 		go func() {
@@ -66,12 +70,12 @@ func (app *App) ListenAndServeAsync() {
 }
 
 func (app *App) startListening() {
-	log.Printf("Serving on " + app.Addr)
+	log.Printf("Serving on " + app.addr)
 	app.ListenAndServeAsync()
 }
 
 func (app *App) GetAddr() string {
-	return app.Addr
+	return app.addr
 }
 
 func (app *App) Close() error {
@@ -126,7 +130,7 @@ func (app *App) bulkDownload(w http.ResponseWriter, r *http.Request) int {
 	timeCalc := new(TimeCalc)
 	timeCalc.Init("bulk-download")
 
-	var config model.BulkDownloadConfig
+	var config model2.BulkDownloadConfig
 
 	err := json.NewDecoder(r.Body).Decode(&config)
 
@@ -151,9 +155,9 @@ func (app *App) bulkDownload(w http.ResponseWriter, r *http.Request) int {
 
 	var maxConcurrencySemaphore = make(chan int, config.MaxConcurrency)
 
-	resultChan := make(chan model.DownloadResponse, config.MaxConcurrency*2)
+	resultChan := make(chan model2.DownloadResponse, config.MaxConcurrency*2)
 
-	downloaderService := new(service.DownloaderService)
+	downloaderService := new(service2.DownloaderService)
 	downloaderService.ConfigureTransformers(config.Transform)
 	downloaderService.ConfigureTimeout(config.Timeout)
 	downloaderService.EnableProxy(config.Proxy)
@@ -187,7 +191,7 @@ func (app *App) bulkDownload(w http.ResponseWriter, r *http.Request) int {
 
 				log.Print("["+(strconv.Itoa(len(config.Url)))+"/"+strconv.Itoa(index)+"]"+"begin bulk download index/url: ", index, item)
 
-				var resItem model.DownloadResponse
+				var resItem model2.DownloadResponse
 
 				for i := 0; i < config.RetryCount; i++ {
 					resItem = downloaderService.Get(r.Context(), item)
@@ -231,7 +235,7 @@ func (app *App) bulkDownload(w http.ResponseWriter, r *http.Request) int {
 		}()
 	}
 
-	if config.OutputForm == "" || config.OutputForm == model.JsonOutput {
+	if config.OutputForm == "" || config.OutputForm == model2.JsonOutput {
 		w.Header().Set("Content-Type", "application/json")
 
 		bodyWriter.Write([]byte("["))
@@ -265,20 +269,20 @@ func (app *App) bulkDownload(w http.ResponseWriter, r *http.Request) int {
 	return 200
 }
 
-func (app *App) compress(w http.ResponseWriter, compression model.Compression) io.WriteCloser {
+func (app *App) compress(w http.ResponseWriter, compression model2.Compression) io.WriteCloser {
 	w.Header().Set("Content-Encoding", "application/gzip")
 
 	var writer io.WriteCloser
 	var err error
 
 	switch compression.Algo {
-	case model.Gzip:
+	case model2.Gzip:
 		writer, err = gzip.NewWriterLevel(w, compression.Level)
 		break
-	case model.Bzip2:
+	case model2.Bzip2:
 		writer, err = bzip2.NewWriter(w, &bzip2.WriterConfig{Level: compression.Level})
 		break
-	case model.Zstd:
+	case model2.Zstd:
 		writer, err = zstd.NewWriter(w, zstd.WithEncoderLevel(zstd.EncoderLevelFromZstd(compression.Level)))
 		break
 	}
@@ -295,7 +299,7 @@ func (app *App) bulkWhois(w http.ResponseWriter, r *http.Request) int {
 	timeCalc := new(TimeCalc)
 	timeCalc.Init("bulk-whois")
 
-	var config model.BulkWhoisConfig
+	var config model2.BulkWhoisConfig
 
 	err := json.NewDecoder(r.Body).Decode(&config)
 
@@ -320,7 +324,7 @@ func (app *App) bulkWhois(w http.ResponseWriter, r *http.Request) int {
 
 	var maxConcurrencySemaphore = make(chan int, config.MaxConcurrency)
 
-	resultChan := make(chan model.WhoisResponse, config.MaxConcurrency*2)
+	resultChan := make(chan model2.WhoisResponse, config.MaxConcurrency*2)
 
 	go func() {
 		var counter int32
@@ -351,10 +355,10 @@ func (app *App) bulkWhois(w http.ResponseWriter, r *http.Request) int {
 
 				log.Print("["+(strconv.Itoa(len(config.Domains)))+"/"+strconv.Itoa(index)+"]"+"begin bulk download index/url: ", index, item)
 
-				var resItem model.WhoisResponse
+				var resItem model2.WhoisResponse
 
 				for i := 0; i < config.RetryCount; i++ {
-					resItem = service.WhoisServiceInstance.Get(item, config.Timeout)
+					resItem = service2.WhoisServiceInstance.Get(item, config.Timeout)
 
 					if resItem.Error == error2.NoError {
 						break
@@ -391,7 +395,7 @@ func (app *App) bulkWhois(w http.ResponseWriter, r *http.Request) int {
 		}()
 	}
 
-	if config.OutputForm == "" || config.OutputForm == model.JsonOutput {
+	if config.OutputForm == "" || config.OutputForm == model2.JsonOutput {
 		w.Header().Set("Content-Type", "application/json")
 
 		bodyWriter.Write([]byte("["))
@@ -429,19 +433,28 @@ func (app *App) bulkWhois(w http.ResponseWriter, r *http.Request) int {
 func (app *App) get(w http.ResponseWriter, r *http.Request, useBody bool) int {
 	defer r.Body.Close()
 
-	var config model.DownloadConfig
+	jsonEncoder := json.NewEncoder(w)
+
+	sendError := func(errorState error2.State) int {
+		downloadResponse := new(model2.DownloadResponse)
+		downloadResponse.Error = errorState
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(400)
+
+		_ = jsonEncoder.Encode(downloadResponse)
+
+		return 400
+	}
+
+	var config model2.DownloadConfig
 	if !useBody {
 		query, err := url.ParseQuery(r.URL.RawQuery)
 
 		if err != nil {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(400)
+			log.Warn(err)
 
-			log.Println(err)
-
-			writeDownloadError(w, err, error2.UrlNotValid)
-
-			return 400
+			return sendError(error2.UrlNotValid)
 		}
 
 		config = app.parseConfig(query, err)
@@ -449,37 +462,24 @@ func (app *App) get(w http.ResponseWriter, r *http.Request, useBody bool) int {
 		err := json.NewDecoder(r.Body).Decode(&config)
 
 		if err != nil {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(400)
+			log.Warn(err)
 
-			log.Print(err)
-
-			writeDownloadError(w, err, error2.RequestBodyNotValid)
-
-			return 400
+			return sendError(error2.RequestBodyNotValid)
 		}
 	}
 
-	downloaderService := new(service.DownloaderService)
-	downloaderService.ConfigureTransformers(config.Transform)
+	downloadResponse, err := app.appService.Get(r.Context(), config)
 
-	downloadResponse := downloaderService.Get(r.Context(), config.Url)
-
-	if downloadResponse.Error != error2.NoError {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(400)
-
-		writeDownloadError(w, nil, downloadResponse.Error)
-
-		return 400
+	if err != nil {
+		log.Warn(err)
 	}
 
-	w.Write([]byte(downloadResponse.Content))
+	_ = jsonEncoder.Encode(downloadResponse)
 
 	return downloadResponse.StatusCode
 }
 
-func (app *App) parseConfig(query url.Values, err error) model.DownloadConfig {
+func (app *App) parseConfig(query url.Values, err error) model2.DownloadConfig {
 	urlParam := query.Get("url")
 
 	timeout, err := strconv.Atoi(query.Get("timeout"))
@@ -487,10 +487,10 @@ func (app *App) parseConfig(query url.Values, err error) model.DownloadConfig {
 		timeout = 5000
 	}
 
-	config := model.DownloadConfig{
+	config := model2.DownloadConfig{
 		Url:   urlParam,
 		Proxy: query.Get("proxy") == "true",
-		Timeout: model.TimeoutConfig{
+		Timeout: model2.TimeoutConfig{
 			RequestTimeout: time.Duration(timeout) * time.Millisecond,
 		},
 	}

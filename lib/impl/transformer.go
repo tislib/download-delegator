@@ -1,9 +1,9 @@
 package service
 
 import (
+	error2 "download-delegator/core/model/errors"
 	"download-delegator/lib/parser/model"
 	transformers2 "download-delegator/lib/transformers"
-	error2 "download-delegator/model/errors"
 	log "github.com/sirupsen/logrus"
 )
 

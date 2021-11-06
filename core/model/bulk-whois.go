@@ -1,7 +1,7 @@
 package model
 
 import (
-	error2 "download-delegator/model/errors"
+	error2 "download-delegator/core/model/errors"
 	"time"
 )
 

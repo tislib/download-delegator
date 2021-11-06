@@ -1,67 +1,50 @@
-package main
+package client
 
 import (
+	"bytes"
 	"context"
-	"crypto/tls"
-	"download-delegator/app"
+	"download-delegator/core/model"
+	"encoding/json"
+	"errors"
 	log "github.com/sirupsen/logrus"
-	"golang.org/x/net/http2"
-	"golang.org/x/sync/semaphore"
-	"io"
+	"io/ioutil"
 	"net/http"
-	"strings"
-	"time"
 )
 
-func main() {
-	timeCalcR := new(app.TimeCalc)
-	timeCalcR.Init("Request")
-	timeCalcO := new(app.TimeCalc)
-	timeCalcO.Init("OK")
-
-	timeCalcE := new(app.TimeCalc)
-	timeCalcE.Init("ERROR")
-
-	client := new(http.Client)
-	client.Timeout = time.Second * 100
-
-	client.Transport = &http2.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-	}
-
-	var sem = semaphore.NewWeighted(int64(1000))
-
-	for {
-		sem.Acquire(context.TODO(), 1)
-		go func() {
-			timeCalcR.Step()
-			runC(client, timeCalcO, timeCalcE)
-			sem.Release(1)
-		}()
-
-		time.Sleep(100 * time.Millisecond)
-	}
-
+type DownloadDelegatorClient struct {
+	addr string
 }
 
-func runC(client *http.Client, timeCalcO *app.TimeCalc, timeCalcE *app.TimeCalc) {
-	resp, err := client.Get("https://tisserv.net:8234/get?url=https://tap.az/elanlar/elektronika/audio-video/20571375")
+func (receiver *DownloadDelegatorClient) Init(initConfig InitConfig) {
+	receiver.addr = initConfig.Addr
+}
+
+func (receiver DownloadDelegatorClient) Get(ctx context.Context, config model.DownloadConfig) (*model.DownloadResponse, error) {
+	url := "http://" + receiver.addr + "/get"
+
+	requestData, err := json.Marshal(config)
+
+	resp, err := http.Post(url, "application/json", bytes.NewReader(requestData))
 
 	if err != nil {
-		//log.Print(err)
-		timeCalcE.Step()
-		return
+		return nil, err
 	}
 
-	defer resp.Body.Close()
+	responseData, err := ioutil.ReadAll(resp.Body)
 
-	buf := new(strings.Builder)
-	io.Copy(buf, resp.Body)
-	log.Print(len(buf.String()))
+	log.Trace("GET Response: ", string(responseData))
 
-	if resp.StatusCode == 200 {
-		timeCalcO.Step()
-	} else {
-		timeCalcE.Step()
+	var downloadResponse = new(model.DownloadResponse)
+
+	err = json.Unmarshal(responseData, downloadResponse)
+
+	if err != nil {
+		return downloadResponse, err
 	}
+
+	if resp.StatusCode != 200 {
+		return downloadResponse, errors.New("operational error: " + resp.Status)
+	}
+
+	return downloadResponse, err
 }
