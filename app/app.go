@@ -85,7 +85,7 @@ func (app *App) Close() error {
 func (app *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	action := r.Method + " " + r.URL.Path
 
-	log.Print("download: ", r.RequestURI, " ", r.RemoteAddr)
+	log.Debug("download: ", r.RequestURI, " ", r.RemoteAddr)
 
 	if strings.HasPrefix(action, "GET /pprof") {
 		app.pprofHandler.ServeHTTP(w, r)
@@ -101,19 +101,19 @@ func (app *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		break
 	case "GET /version":
 		status := app.version(w, r)
-		log.Print("result: ", r.RequestURI, " ", r.RemoteAddr, " ", status)
+		log.Debug("result: ", r.RequestURI, " ", r.RemoteAddr, " ", status)
 	case "GET /get":
 		status := app.get(w, r, false)
-		log.Print("result: ", r.RequestURI, " ", r.RemoteAddr, " ", status)
+		log.Debug("result: ", r.RequestURI, " ", r.RemoteAddr, " ", status)
 	case "POST /get":
 		status := app.get(w, r, true)
-		log.Print("result: ", r.RequestURI, " ", r.RemoteAddr, " ", status)
+		log.Debug("result: ", r.RequestURI, " ", r.RemoteAddr, " ", status)
 	case "POST /bulk":
 		status := app.bulkDownload(w, r)
-		log.Print("result: ", r.RequestURI, " ", r.RemoteAddr, " ", status)
+		log.Debug("result: ", r.RequestURI, " ", r.RemoteAddr, " ", status)
 	case "POST /whois":
 		status := app.bulkWhois(w, r)
-		log.Print("result: ", r.RequestURI, " ", r.RemoteAddr, " ", status)
+		log.Debug("result: ", r.RequestURI, " ", r.RemoteAddr, " ", status)
 	}
 }
 
@@ -134,7 +134,7 @@ func (app *App) bulkDownload(w http.ResponseWriter, r *http.Request) int {
 
 	err := json.NewDecoder(r.Body).Decode(&config)
 
-	log.Print(config)
+	log.Trace("bulk download config", config)
 
 	if err != nil {
 		w.Header().Set("Content-Type", "application/json")
@@ -193,7 +193,7 @@ func (app *App) bulkDownload(w http.ResponseWriter, r *http.Request) int {
 
 				var resItem model2.DownloadResponse
 
-				for i := 0; i < config.RetryCount; i++ {
+				for i := 0; i < config.RetryCount+1; i++ {
 					resItem = downloaderService.Get(r.Context(), item)
 
 					resItem.Index = index

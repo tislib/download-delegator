@@ -88,7 +88,6 @@ func (s *DownloaderService) Get(ctx context.Context, url string) model3.Download
 			DurationMS: int(time.Now().Sub(beginTime) / time.Millisecond),
 			Error:      ddError.Timeout,
 		}
-	//case <-time.After(100 * time.Second): //timeout
 	default:
 
 	}
@@ -247,6 +246,18 @@ func (s *DownloaderService) EnableProxy(proxy bool) {
 
 func (s *DownloaderService) ConfigureTimeout(timeout model3.TimeoutConfig) {
 	s.timeout = timeout
+
+	if s.timeout.TLSHandshakeTimeout == 0 {
+		s.timeout.TLSHandshakeTimeout = time.Second
+	}
+
+	if s.timeout.DialTimeout == 0 {
+		s.timeout.DialTimeout = time.Second
+	}
+
+	if s.timeout.RequestTimeout == 0 {
+		s.timeout.RequestTimeout = time.Second * 2
+	}
 }
 
 func unwrapErrorRecursive(err error) error {
