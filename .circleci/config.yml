@@ -39,13 +39,13 @@ jobs:
           name: Run tests
           command: |
             docker build -f test.Dockerfile .
-      - deploy:
-          name: Push application Docker image
-          command: |
-            if [ "${CIRCLE_BRANCH}" == "master" ]; then
-              docker tag app "docker push tislib/download-delegator:${CIRCLE_BUILD_NUM}"
-              docker push "docker push tislib/download-delegator:${CIRCLE_BUILD_NUM}"
-
-              docker tag app "docker push tislib/download-delegator:latest"
-              docker push "docker push tislib/download-delegator:latest"
-            fi
+#      - deploy:
+#          name: Push application Docker image
+#          command: |
+#            if [ "${CIRCLE_BRANCH}" == "master" ]; then
+#              docker tag app "docker push tislib/download-delegator:${CIRCLE_BUILD_NUM}"
+#              docker push "docker push tislib/download-delegator:${CIRCLE_BUILD_NUM}"
+#
+#              docker tag app "docker push tislib/download-delegator:latest"
+#              docker push "docker push tislib/download-delegator:latest"
+#            fi
