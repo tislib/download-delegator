@@ -23,7 +23,8 @@ POST http://localhost:8234/bulk
     "url": ["https://imdb.com", "https://www.rottentomatoes.com/browse/opening"],
     "compression": {
         "algo": "bzip2"
-    }
+    },
+    "maxConcurrency": 100
 }
 ```
 
@@ -58,5 +59,5 @@ POST http://localhost:8234/bulk
 ## Inside Docker
 
 ```
-docker run tislib/download-delegator:v2
+docker run -p 8234:8234 tislib/download-delegator:v2
 ```
