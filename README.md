@@ -1,6 +1,15 @@
 download-delegator ![CircleCI](https://img.shields.io/circleci/build/github/tislib/download-delegator)
 ====
 
+# About
+Download Delegator is high concurrent webpage downloader, where you can send list of pages(thousands of pages) and it will download them, compress them and will return to you.
+
+With Download Delegator, you can specify how it will behave with network, you can configure compression, max concurrency, etc.
+
+Download Delegator also have built-in html parsing and script interpreting abilities, you can send your JS code and Download Delegator will execute this JS codes after download is done, it is good for minimising outbound traffic.
+
+Download Delegator can also be deployed as aws lambda(s) and thousands of download delegators can be managed in parallel
+
 # Getting started
 
 *Request(curl):*
